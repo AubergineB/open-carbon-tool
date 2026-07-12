@@ -101,6 +101,18 @@ export const emissionFactorSources = [
     description: 'Données d\'intensité carbone de l\'électricité pour 200+ pays. Idéal pour le Scope 2 location-based et market-based. Données historiques et projections.',
   },
   {
+    id: 'iea',
+    nom: 'AIE — Emission Factors',
+    organisme: 'Agence internationale de l\'énergie (AIE / IEA)',
+    url: 'https://www.iea.org/data-and-statistics/data-product/emissions-factors-2025',
+    acces: 'Téléchargement Excel — extrait gratuit, jeu complet payant',
+    couverture: 'Électricité et chaleur — intensité carbone par pays et par année (~150 pays)',
+    licence: 'Propriétaire (IEA Terms and Conditions), extrait sous licence libre',
+    miseAJour: 'Annuelle',
+    feMonetaires: false,
+    description: 'Facteurs d\'émission de l\'électricité et de la chaleur de l\'AIE, référence internationale pour le Scope 2 location-based hors Europe. Couvre ~150 pays avec historique. L\'extrait gratuit suffit pour un bilan PME ; le jeu complet (cycle de vie, séries longues) est payant.',
+  },
+  {
     id: 'exiobase',
     nom: 'Exiobase',
     organisme: 'Consortium universitaire européen',
