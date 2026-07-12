@@ -12,6 +12,7 @@ import ProjetForm from './components/ProjetForm'
 import CollecteForm from './components/CollecteForm'
 import Resultats from './components/Resultats'
 import FacteursPanel from './components/FacteursPanel'
+import EspaceTravail from './components/EspaceTravail'
 import Avancement from './components/Avancement'
 import MentionsLegales from './components/MentionsLegales'
 import PlanAction from './components/PlanAction'
@@ -376,6 +377,9 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
         )}
         {currentView === 'facteurs' && (
           <FacteursPanel facteursCustom={facteursCustom} setFacteursCustom={setFacteursCustom} />
+        )}
+        {currentView === 'espace-travail' && (
+          <EspaceTravail />
         )}
         {currentView === 'resultats' && (
           <Resultats projet={projet} lignes={lignes} workdir={workdir} projetPath={projetPath} />

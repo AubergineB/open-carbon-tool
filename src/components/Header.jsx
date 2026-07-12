@@ -9,6 +9,7 @@ export default function Header({ currentView, setCurrentView, projet, saveStatus
     { id: 'collecte-energie', label: 'Collecte' },
     { id: 'avancement', label: 'Gestion de projet' },
     { id: 'facteurs', label: 'Facteurs' },
+    { id: 'espace-travail', label: 'Espace de travail' },
     { id: 'resultats', label: 'Résultats' },
   ]
 
