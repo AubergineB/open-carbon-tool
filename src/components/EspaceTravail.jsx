@@ -2,20 +2,16 @@ import { useState } from 'react'
 import { densites, ratiosPcsPci, energieVersKwh, densitesDechets } from '../data/conversionConstants'
 import { getFactorsByCategory } from '../data/emissionFactors'
 import { convertirMasseVolume, convertirPcsPci, estimerTkmDepuisEuros, convertirEnergie, convertirDechetsVolume } from '../utils/conversions'
+import { formatNombre } from '../utils/formatEmission'
+import { LlmFilePicker } from './LlmReview'
 
 const fretFactorsTkm = getFactorsByCategory('fret').filter(f => f.unite === 'tkm')
-const fluidesFugitifs = getFactorsByCategory('fugitives').filter(f => f.unite === 'kg')
 const energieUnites = Object.keys(energieVersKwh)
 const dechetsTypes = Object.keys(densitesDechets)
 
 function parseInputValeur(raw) {
   if (raw === '' || raw == null) return NaN
   return parseFloat(String(raw).replace(',', '.'))
-}
-
-function formatNombre(valeur) {
-  if (typeof valeur !== 'number' || !Number.isFinite(valeur)) return '—'
-  return new Intl.NumberFormat('fr-FR', { maximumSignificantDigits: 4 }).format(valeur)
 }
 
 function roundForInput(valeur) {
@@ -106,7 +102,7 @@ function CarteMasseVolume() {
         {resultat ? (
           <>
             <p className="font-headline text-3xl font-black text-primary">
-              ≈ {formatNombre(resultat.resultat)} {resultat.unite}
+              ≈ {formatNombre(resultat.resultat, { significatifs: 4 })} {resultat.unite}
             </p>
             <p className="mt-1 text-[10px] text-outline">{resultat.source}</p>
           </>
@@ -115,7 +111,7 @@ function CarteMasseVolume() {
         )}
       </div>
 
-      <CopyButton text={resultat ? `${formatNombre(resultat.resultat)} ${resultat.unite}` : ''} />
+      <CopyButton text={resultat ? `${formatNombre(resultat.resultat, { significatifs: 4 })} ${resultat.unite}` : ''} />
     </section>
   )
 }
@@ -173,7 +169,7 @@ function CartePcsPci() {
         {resultat ? (
           <>
             <p className="font-headline text-3xl font-black text-primary">
-              ≈ {formatNombre(resultat.resultat)} {uniteResultat}
+              ≈ {formatNombre(resultat.resultat, { significatifs: 4 })} {uniteResultat}
             </p>
             <p className="mt-1 text-[10px] text-outline">{resultat.source}</p>
           </>
@@ -182,7 +178,7 @@ function CartePcsPci() {
         )}
       </div>
 
-      <CopyButton text={resultat ? `${formatNombre(resultat.resultat)} ${uniteResultat}` : ''} />
+      <CopyButton text={resultat ? `${formatNombre(resultat.resultat, { significatifs: 4 })} ${uniteResultat}` : ''} />
     </section>
   )
 }
@@ -228,10 +224,10 @@ function CarteTkm() {
         {resultat ? (
           <>
             <p className="font-headline text-3xl font-black text-primary">
-              ≈ {formatNombre(resultat.emissions_t)} tCO₂e
+              ≈ {formatNombre(resultat.emissions_t, { significatifs: 4 })} tCO₂e
             </p>
             <p className="font-headline text-xl font-bold text-on-primary-container">
-              ≈ {formatNombre(resultat.tkm)} t.km ({resultat.feMode.nom})
+              ≈ {formatNombre(resultat.tkm, { significatifs: 4 })} t.km ({resultat.feMode.nom})
             </p>
             <p className="mt-1 text-[10px] text-outline">
               {resultat.feMonetaire.source} · {resultat.feMode.source}
@@ -242,7 +238,7 @@ function CarteTkm() {
         )}
       </div>
 
-      <CopyButton text={resultat ? `${formatNombre(resultat.tkm)} t.km` : ''} />
+      <CopyButton text={resultat ? `${formatNombre(resultat.tkm, { significatifs: 4 })} t.km` : ''} />
 
       <div className="bg-surface-low border-l-4 border-accent-red p-4">
         <p className="text-xs text-secondary leading-relaxed">
@@ -313,7 +309,7 @@ function CarteEnergie() {
         {resultat != null ? (
           <>
             <p className="font-headline text-3xl font-black text-primary">
-              ≈ {formatNombre(resultat)} {energieVersKwh[uniteTo].label}
+              ≈ {formatNombre(resultat, { significatifs: 4 })} {energieVersKwh[uniteTo].label}
             </p>
             <p className="mt-1 text-[10px] text-outline">1 kWh = 3,6 MJ · 1 tep = 11 630 kWh (convention AIE)</p>
           </>
@@ -322,7 +318,7 @@ function CarteEnergie() {
         )}
       </div>
 
-      <CopyButton text={resultat != null ? `${formatNombre(resultat)} ${energieVersKwh[uniteTo].label}` : ''} />
+      <CopyButton text={resultat != null ? `${formatNombre(resultat, { significatifs: 4 })} ${energieVersKwh[uniteTo].label}` : ''} />
     </section>
   )
 }
@@ -369,7 +365,7 @@ function CarteDechets() {
         {resultat ? (
           <>
             <p className="font-headline text-3xl font-black text-primary">
-              ≈ {formatNombre(resultat.resultat)} t
+              ≈ {formatNombre(resultat.resultat, { significatifs: 4 })} t
             </p>
             <p className="mt-1 text-[10px] text-outline">{resultat.source}</p>
           </>
@@ -378,7 +374,7 @@ function CarteDechets() {
         )}
       </div>
 
-      <CopyButton text={resultat ? `${formatNombre(resultat.resultat)} t` : ''} />
+      <CopyButton text={resultat ? `${formatNombre(resultat.resultat, { significatifs: 4 })} t` : ''} />
 
       <p className="text-[10px] text-outline">
         Ordre de grandeur : la masse volumique réelle dépend du tassement.
@@ -388,73 +384,7 @@ function CarteDechets() {
   )
 }
 
-function CarteFluides() {
-  const [fluideId, setFluideId] = useState(fluidesFugitifs[0]?.id || '')
-  const [kgRaw, setKgRaw] = useState('')
-
-  const kgNum = parseInputValeur(kgRaw)
-  const fe = fluidesFugitifs.find(f => f.id === fluideId)
-  const resultat = fe && Number.isFinite(kgNum) && kgNum >= 0 ? (kgNum * fe.valeur) / 1000 : null
-
-  return (
-    <section className="bg-surface-lowest p-8 border-t-[3px] border-primary-container space-y-6">
-      <h2 className="font-headline font-bold text-lg uppercase tracking-tight text-primary flex items-center gap-2">
-        <span className="material-symbols-outlined">mode_fan</span>
-        Fluides frigorigènes
-      </h2>
-
-      <div className="space-y-2">
-        <label className="block text-[10px] font-bold text-outline uppercase tracking-widest">Fluide</label>
-        <select
-          value={fluideId}
-          onChange={e => setFluideId(e.target.value)}
-          className="w-full bg-transparent border-0 border-b-2 border-surface-highest focus:ring-0 focus:border-primary px-0 py-2 text-base font-headline font-medium transition-all"
-        >
-          {fluidesFugitifs.map(f => (
-            <option key={f.id} value={f.id}>{f.nom}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="space-y-2">
-        <label className="block text-[10px] font-bold text-outline uppercase tracking-widest">Masse (kg)</label>
-        <input
-          type="text"
-          inputMode="decimal"
-          value={kgRaw}
-          onChange={e => setKgRaw(e.target.value)}
-          className="w-full bg-transparent border-0 border-b-2 border-surface-highest focus:ring-0 focus:border-primary px-0 py-2 text-xl font-headline font-medium transition-all"
-        />
-      </div>
-
-      <div className="min-h-[5rem]">
-        {resultat != null ? (
-          <>
-            <p className="font-headline text-3xl font-black text-primary">
-              ≈ {formatNombre(resultat)} tCO₂e
-            </p>
-            {fe && (
-              <p className="mt-1 text-[10px] text-outline">
-                GWP {fe.valeur} kgCO₂e/kg — {fe.source}
-              </p>
-            )}
-          </>
-        ) : (
-          <p className="text-sm text-outline">Saisir une masse pour convertir.</p>
-        )}
-      </div>
-
-      <CopyButton text={resultat != null ? `${formatNombre(resultat)} tCO₂e` : ''} />
-
-      <p className="text-[10px] text-outline">
-        Calculatrice indicative : pour le bilan, saisissez les kg rechargés dans le
-        poste Climatisation et réfrigération.
-      </p>
-    </section>
-  )
-}
-
-export default function EspaceTravail() {
+export default function EspaceTravail({ onExportLlmTemplate, onImportLlmFile }) {
   return (
     <div>
       <header className="mb-12">
@@ -468,13 +398,39 @@ export default function EspaceTravail() {
         </p>
       </header>
 
+      <section className="bg-primary-container text-surface p-8 mb-8 border-t-[3px] border-primary">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="material-symbols-outlined">smart_toy</span>
+              <h2 className="font-headline font-bold text-lg uppercase tracking-tight">Collecte assistée par IA</h2>
+            </div>
+            <p className="text-sm opacity-80 leading-relaxed">
+              Exportez un gabarit JSON auto-documenté, faites-le éventuellement
+              structurer par un LLM hors de l’application, puis relisez chaque
+              proposition avant toute insertion. Aucun appel réseau n’est effectué ici.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={onExportLlmTemplate}
+              className="flex items-center gap-2 bg-surface text-primary px-5 py-3 font-bold text-[10px] uppercase tracking-widest hover:bg-surface-low focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-surface"
+            >
+              <span className="material-symbols-outlined text-sm" aria-hidden="true">download</span>
+              Exporter un gabarit LLM
+            </button>
+            <LlmFilePicker onImport={onImportLlmFile} dark />
+          </div>
+        </div>
+      </section>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <CarteMasseVolume />
         <CartePcsPci />
         <CarteTkm />
         <CarteEnergie />
         <CarteDechets />
-        <CarteFluides />
       </div>
     </div>
   )
