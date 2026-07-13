@@ -53,7 +53,10 @@ export default function MentionsLegales({ onBack }) {
               Propriété intellectuelle
             </h2>
             <p className="text-sm text-secondary leading-relaxed">
-              L'ensemble du contenu de ce site (textes, graphismes, logiciels, images, base de données) est la propriété de Henri Ducasse (EI) ou de ses partenaires. Toute reproduction, représentation, modification ou adaptation, totale ou partielle, est interdite sans autorisation écrite préalable.
+              Open Carbon Tool est un logiciel open source publié sous licence MIT. Toute personne peut l'utiliser, le copier, le modifier, le forker, le redistribuer et l'intégrer dans un produit commercial ou propriétaire, sans autorisation préalable. La seule obligation est de conserver la notice de copyright et de licence. Le logiciel est fourni « en l'état », sans garantie.
+            </p>
+            <p className="text-sm text-secondary leading-relaxed mt-3">
+              La licence porte sur le code et son contenu. Les marques et logos — Mobility Transition Lab, Bilan Carbone® (Association Bilan Carbone), Base Carbone® (ADEME) — restent la propriété de leurs titulaires respectifs et ne sont pas concédés par la licence MIT.
             </p>
             <p className="text-sm text-secondary leading-relaxed mt-3">
               Les facteurs d'émission utilisés proviennent de la Base Carbone® de l'ADEME, disponible sous licence ouverte. La méthodologie de calcul s'appuie sur le référentiel Bilan Carbone® V9 de l'Association Bilan Carbone (ABC) et le GHG Protocol Corporate Standard du WRI/WBCSD.
