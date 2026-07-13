@@ -4,6 +4,49 @@ Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-07-13
+
+### Méthodologie
+
+- Scope 2 en double restitution : chaque ligne d'électricité apparaît désormais
+  dans les deux colonnes Location-Based et Market-Based, le mix résiduel étant
+  appliqué automatiquement en l'absence de contrat.
+- Correction du facteur « mix résiduel France », qui portait par erreur la
+  valeur du mix moyen location-based.
+- Fiches guides des postes réfrigération, achats, usage des produits vendus et
+  numérique mises à niveau ; nouveau facteur « requête IA générative » (ACV
+  Mistral Large 2).
+- Phrases de matérialité sectorielle réécrites poste par poste.
+
+### Fonctionnalités
+
+- Collecte assistée par LLM, sans réseau ni clé API : export d'un gabarit JSON
+  auto-documenté, remplissage hors de l'application, réimport dans une file de
+  revue, validation humaine ligne par ligne, recalcul avec les facteurs connus.
+- Archivage réversible des facteurs, personnalisés comme catalogue : un facteur
+  retiré des listes de saisie ne détruit plus l'historique, les lignes déjà
+  calculées restant lisibles grâce au snapshot conservé dans le fichier.
+- Vue FAQ dédiée, séparée de la Documentation.
+- Espace de travail : convertisseurs d'énergie et de déchets, en plus de
+  masse/volume, PCS/PCI et t.km.
+- Documentation embarquée : FAQ de comptabilité carbone et ressources externes.
+- Fermeture propre de la fenêtre macOS après sauvegarde, raccourcis de zoom
+  natifs, formatage des nombres uniformisé en français.
+
+### Distribution
+
+- macOS : les bundles sont signés Developer ID et notarisés. L'application
+  s'ouvre au double-clic, sans avertissement Gatekeeper ni manipulation.
+- Windows : le MSI n'est plus publié. Il exigeait les droits administrateur, dont
+  un salarié de PME ne dispose généralement pas. L'installeur `.exe` s'installe
+  dans le profil utilisateur, sans admin.
+- Instructions d'installation corrigées : depuis macOS 15, le Ctrl-clic ne
+  contourne plus Gatekeeper.
+
+### Corrections
+
+- Export PDF réparé (imports ESM de jspdf-autotable v5).
+
 ## [0.2.0] — 2026-07-11
 
 - Identité produit Open Carbon Tool : nouveau logo, icônes d'application,
