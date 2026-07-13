@@ -51,13 +51,13 @@ const postesEmission = [
       ],
       quoi_chercher: [
         'Litres par type de carburant (diesel, essence, B100…)',
-        'km parcourus si pas de relevé litres — appliquer une conso moyenne',
+        'Kilomètres parcourus si pas de relevé en litres (conso moyenne à appliquer)',
       ],
       ordres_grandeur: [
         'PME avec 10 véhicules utilitaires : 15 000 – 50 000 L diesel/an',
       ],
       erreurs_courantes: [
-        'Oublier les véhicules en LLD (Location Longue Durée) — ils consomment du carburant Scope 1',
+        'Oublier les véhicules en LLD (Location Longue Durée), aussi comptabilisés en Scope 1',
         'Mélanger usage personnel et professionnel sans pondération',
       ],
       pourquoi: 'Poste dominant pour les PME de transport et logistique. Inclut les émissions de combustion directe (Scope 1) + amont carburant (Scope 3.3).',
@@ -86,7 +86,7 @@ const postesEmission = [
         'Bureau standard : 0 – 2 kg rechargés/an',
       ],
       erreurs_courantes: [
-        'Ne pas confondre recharge annuelle et charge initiale à l\'installation',
+        'Confondre recharge annuelle et charge initiale à l\'installation',
         'Oublier les chambres froides et le matériel frigorifique',
       ],
       pourquoi: 'Faible en volume mais GWP très élevé : R-410A = 2088 fois le CO₂. 1 kg perdu = plus de 2 tCO₂e.',
@@ -111,7 +111,7 @@ const postesEmission = [
       ],
       quoi_chercher: [
         'Ligne « Consommation » en kWh — pas le montant en euros',
-        'Vérifier que la période couvre bien 12 mois complets',
+        'Période facturée : doit couvrir 12 mois complets',
       ],
       ordres_grandeur: [
         'Bureau 50 salariés : 50 000 – 150 000 kWh/an',
@@ -147,7 +147,7 @@ const postesEmission = [
       ],
       erreurs_courantes: [
         'Confondre la facture de réseau de chaleur avec la facture d\'électricité',
-        'Ne pas savoir qu\'on est raccordé à un réseau (vérifier auprès du bailleur)',
+        'Ignorer un raccordement existant (vérifier auprès du bailleur)',
       ],
       pourquoi: 'Le facteur d\'émission varie de 0.05 à 0.25 kgCO₂e/kWh selon le mix du réseau (biomasse, géothermie, cogénération…).',
     },
@@ -171,14 +171,14 @@ const postesEmission = [
       ],
       quoi_chercher: [
         'Montants HT par catégorie de dépense (pas TTC)',
-        'Regrouper par nature : informatique, conseil, nettoyage, assurance…',
+        'Catégories de dépense : informatique, conseil, nettoyage, assurance…',
       ],
       ordres_grandeur: [
         'PME 30 salariés tertiaire : 200 000 – 800 000 € HT d\'achats/an',
       ],
       erreurs_courantes: [
         'Utiliser les montants TTC au lieu de HT',
-        'Double-compter des achats déjà traités en immobilisations',
+        'Double compter des achats déjà traités en immobilisations',
       ],
       pourquoi: 'Souvent 30 – 60 % du bilan carbone total d\'une PME tertiaire. C\'est le poste Scope 3 le plus lourd et le plus sous-estimé.',
     },
@@ -199,14 +199,14 @@ const postesEmission = [
         'Comptabilité : tableau des immobilisations (classe 2)',
       ],
       quoi_chercher: [
-        'Nombre d\'unités achetées DANS L\'ANNÉE (pas le stock total)',
+        'Nombre d\'unités achetées dans l\'année (pas le stock total)',
         'Type précis : laptop, écran, smartphone, serveur, mobilier…',
       ],
       ordres_grandeur: [
         'PME 30 salariés : 5 – 15 laptops achetés/an',
       ],
       erreurs_courantes: [
-        'Compter le parc informatique total au lieu des achats de l\'année',
+        'Confondre le parc informatique total avec les achats de l\'année',
         'Oublier le mobilier de bureau et les équipements de cuisine/accueil',
       ],
       pourquoi: 'Souvent sous-estimé. Un laptop représente environ 300 kgCO₂e — un véhicule thermique neuf dépasse 10 tCO₂e.',
@@ -288,13 +288,13 @@ const postesEmission = [
       ],
       quoi_chercher: [
         'Kilomètres par mode : avion court/moyen/long courrier, train, voiture',
-        'Pour l\'avion : distinguer court-courrier (< 1 000 km), long-courrier',
+        'Catégorie de vol selon la distance : court-courrier (< 1 000 km), long-courrier',
       ],
       ordres_grandeur: [
         'PME 30 salariés : 20 000 – 100 000 km train/an, 0 – 30 000 km avion',
       ],
       erreurs_courantes: [
-        'Compter aller-retour comme un seul trajet — multiplier par 2',
+        'Confondre aller-retour et trajet simple',
         'Oublier les taxis, VTC et locations de voiture',
       ],
       pourquoi: 'L\'avion domine ce poste : un aller-retour Paris–New York représente environ 1.7 tCO₂e. Le train est 50× moins émetteur.',
@@ -323,8 +323,8 @@ const postesEmission = [
         'PME 30 salariés : 150 000 – 400 000 km voiture cumulés/an',
       ],
       erreurs_courantes: [
-        'Compter l\'aller-retour au lieu du seul trajet aller',
-        'Ne pas ajuster au télétravail réel (les jours à domicile ne génèrent pas d\'émissions DT)',
+        'Confondre aller-retour et trajet aller',
+        'Ignorer le télétravail réel (jours à domicile sans émissions DT)',
       ],
       pourquoi: 'Représente souvent 5 – 15 % du bilan. Le levier principal est le télétravail et la Forfait Mobilité Durable (FMD).',
     },
@@ -387,9 +387,9 @@ const postesEmission = [
         'PME tertiaire pure (conseil, IT) : souvent non applicable (= 0)',
       ],
       erreurs_courantes: [
-        'Ignorer ce poste parce qu\'il n\'y a pas de FE ADEME standard — il faut construire des FE custom',
+        'Ignorer ce poste faute de FE ADEME standard (nécessite des FE personnalisés)',
         'Confondre Cat. 11 (usage) avec Cat. 1 (achats) ou Cat. 10 (transformation)',
-        'Double-compter : si le fournisseur a déjà compté la combustion en Cat. 11, ne pas la recompter',
+        'Double compter la combustion si le fournisseur l\'a déjà intégrée en Cat. 11',
       ],
       pourquoi: 'Souvent le poste le plus lourd du bilan pour les entreprises vendant des produits physiques ou énergétiques. L\'absence de ce poste peut constituer un risque de sous-déclaration majeur. Ce calcul nécessite un accompagnement consultant pour construire les facteurs d\'émission personnalisés.',
     },
@@ -417,7 +417,7 @@ const postesEmission = [
         'PME 30 salariés : 0.5 – 3 tCO₂e/an au total pour les usages numériques',
       ],
       erreurs_courantes: [
-        'Surestimer l\'impact — le numérique représente souvent moins de 2 % du bilan carbone d\'une PME',
+        'Surestimer l\'impact : souvent moins de 2 % du bilan carbone d\'une PME',
       ],
       pourquoi: 'Faible en tCO₂e mais excellent levier de sensibilisation interne. Les équipements (laptops, serveurs) ont un impact bien supérieur aux usages.',
     },
@@ -472,7 +472,7 @@ const postesEmission = [
         'PME 30 salariés : 20 – 200 nuitées/an selon l\'activité',
       ],
       erreurs_courantes: [
-        'Oublier les nuitées facturées directement à l\'entreprise, hors notes de frais individuelles',
+        'Oublier les nuitées facturées directement à l\'entreprise (hors notes de frais)',
       ],
       pourquoi: 'Facteur d\'émission moyen : 6 kgCO₂e/nuit en France, 20 kgCO₂e/nuit à l\'international. À combiner avec les déplacements pro.',
     },
@@ -499,7 +499,7 @@ const postesEmission = [
         'Très variable — souvent négligeable en PME <50 salariés',
       ],
       erreurs_courantes: [
-        'Compter de l\'énergie déjà comptabilisée dans un autre poste (gaz, électricité)',
+        'Double compter de l\'énergie déjà comptabilisée dans un autre poste (gaz, électricité)',
       ],
       pourquoi: 'Rare en PME mais en croissance avec les pompes à chaleur et le biogaz. À renseigner uniquement si vous avez des sources distinctes non couvertes ailleurs.',
     },

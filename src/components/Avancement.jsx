@@ -94,7 +94,7 @@ export default function Avancement({ lignes, sectionsStatus, setSectionsStatus, 
   function handleCopyAssignments() {
     const text = postesEmission
       .filter(poste => sectionsAssignees[poste.id])
-      .map(poste => `${sectionsAssignees[poste.id]} — ${poste.nom}${poste.guide ? `\n${poste.guide}` : ''}`)
+      .map(poste => `${sectionsAssignees[poste.id]} — ${poste.nom}${poste.aide ? `\n${poste.aide}` : ''}`)
       .join('\n\n')
     navigator.clipboard.writeText(text || 'Aucun poste n’est assigné.')
     setNotifToast({ message: 'Liste copiée dans le presse-papier', type: 'success' })

@@ -58,19 +58,19 @@ function GuidePanel({ guide }) {
   if (!guide) return null
 
   const sections = [
-    { key: 'ou_trouver', label: 'Où trouver', icon: 'folder_open' },
-    { key: 'quoi_chercher', label: 'Quoi chercher', icon: 'search' },
+    { key: 'ou_trouver', label: 'Où trouver les données', icon: 'folder_open' },
+    { key: 'quoi_chercher', label: 'Quoi relever', icon: 'search' },
     { key: 'ordres_grandeur', label: 'Ordres de grandeur', icon: 'straighten' },
-    { key: 'erreurs_courantes', label: 'Erreurs courantes', icon: 'warning' },
+    { key: 'erreurs_courantes', label: 'Pièges courants', icon: 'warning' },
   ]
 
   return (
     <div className="mt-3">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-on-primary-container hover:text-primary transition-colors"
+        className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-on-primary-container hover:text-primary border border-primary-container px-3 py-1.5 transition-colors"
       >
-        <span className="material-symbols-outlined text-sm">help</span>
+        <span className="material-symbols-outlined text-sm">menu_book</span>
         Guide pratique
         <span
           className="material-symbols-outlined text-sm transition-transform"
@@ -78,20 +78,26 @@ function GuidePanel({ guide }) {
         >expand_more</span>
       </button>
       {open && (
-        <div className="mt-3 bg-surface-low p-5 border-l-[3px] border-primary-container space-y-4">
+        <div className="mt-3 bg-surface-low p-5 border-l-[3px] border-primary-container space-y-5">
           {guide.pourquoi && (
-            <p className="text-xs font-bold text-primary leading-relaxed">{guide.pourquoi}</p>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-outline">Pourquoi ce poste compte</span>
+              <p className="mt-1.5 text-xs text-primary leading-relaxed">{guide.pourquoi}</p>
+            </div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {sections.map(s => guide[s.key]?.length > 0 && (
               <div key={s.key}>
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <span className="material-symbols-outlined text-xs text-on-primary-container">{s.icon}</span>
                   <span className="text-[10px] font-bold uppercase tracking-widest text-outline">{s.label}</span>
                 </div>
-                <ul className="space-y-1">
+                <ul className="space-y-1.5">
                   {guide[s.key].map((item, i) => (
-                    <li key={i} className="text-xs text-secondary leading-relaxed pl-3 border-l border-surface-highest">{item}</li>
+                    <li key={i} className="flex gap-2 text-xs leading-relaxed">
+                      <span className="mt-[5px] w-1.5 h-1.5 bg-primary-container shrink-0" />
+                      <span className={s.key === 'ordres_grandeur' ? 'text-primary' : 'text-secondary'}>{item}</span>
+                    </li>
                   ))}
                 </ul>
               </div>
