@@ -1,5 +1,5 @@
-import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import { jsPDF } from 'jspdf'
+import { autoTable } from 'jspdf-autotable'
 
 // Couleurs MT Lab
 const COLORS = {
@@ -203,7 +203,7 @@ export function genererRapportPDF(projet, lignes, resultats, categories, topPost
     { content: `${resultats.total.toFixed(3)}`, styles: { fontStyle: 'bold' } },
   ])
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     head: [['Catégorie GHG', 'Catégorie BC®', 'Donnée', 'Précision', 'tCO₂e']],
     body: tableData,
@@ -257,7 +257,7 @@ export function genererRapportPDF(projet, lignes, resultats, categories, topPost
     ['Unité', 'tCO₂e (tonne d\'équivalent CO₂)'],
   ]
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     body: methodo,
     margin: { left: margin, right: margin },
