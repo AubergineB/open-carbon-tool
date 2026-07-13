@@ -11,6 +11,7 @@ export default function Header({ currentView, setCurrentView, projet, saveStatus
     { id: 'facteurs', label: 'Facteurs' },
     { id: 'espace-travail', label: 'Espace de travail' },
     { id: 'resultats', label: 'Résultats' },
+    { id: 'documentation', label: 'Documentation' },
   ]
 
   const isCollecte = currentView.startsWith('collecte-')

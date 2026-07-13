@@ -16,6 +16,7 @@ import EspaceTravail from './components/EspaceTravail'
 import Avancement from './components/Avancement'
 import MentionsLegales from './components/MentionsLegales'
 import PlanAction from './components/PlanAction'
+import Documentation from './components/Documentation'
 import { calculerEmission } from './utils/calculEngine'
 import postesEmission from './data/postesEmission'
 import { collecteGroupsMap } from './data/collecteGroups'
@@ -386,6 +387,9 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
         )}
         {currentView === 'plan-action' && (
           <PlanAction projet={projet} lignes={lignes} />
+        )}
+        {currentView === 'documentation' && (
+          <Documentation />
         )}
       </main>
 
