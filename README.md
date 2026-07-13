@@ -38,9 +38,10 @@ Téléchargez la dernière version depuis la page
 | Windows | `.exe` (installation sans droits administrateur) |
 | Linux | `.AppImage` ou `.deb` |
 
-Les bundles ne sont pas signés par un certificat commercial. Consultez
-[INSTALL.md](INSTALL.md) pour contourner Gatekeeper (macOS) et SmartScreen
-(Windows).
+Les bundles macOS sont signés Apple Developer ID et notarisés : l'application
+s'ouvre au double-clic, sans avertissement. L'installeur Windows n'est pas signé
+et déclenche un avertissement SmartScreen ; il s'installe sans droits
+administrateur. Voir [INSTALL.md](INSTALL.md).
 
 ## Fonctionnalités
 
@@ -112,7 +113,7 @@ Les données restent sur la machine du consultant ou du client. Le dossier peut 
 
 Open Carbon Tool est un outil de diagnostic et d'aide à la décision. Il ne constitue ni un bilan certifié par l'Association Bilan Carbone, ni un BEGES réglementaire, ni un audit externe.
 
-Les bundles sont distribués sans certificat commercial. Consultez [INSTALL.md](INSTALL.md) pour Gatekeeper et SmartScreen.
+L'installeur Windows n'est pas signé : SmartScreen affiche un avertissement, qu'il faut écarter manuellement. Voir [INSTALL.md](INSTALL.md).
 
 ## Développement
 
