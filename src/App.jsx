@@ -21,7 +21,7 @@ import { calculerEmission } from './utils/calculEngine'
 import postesEmission from './data/postesEmission'
 import { collecteGroupsMap } from './data/collecteGroups'
 import { FACTORS_VERSION } from './lib/store'
-
+import { collectFactorWarnings, formatFactorNotice } from './utils/factorWarnings'
 function App() {
   const [showLegal, setShowLegal] = useState(false)
   const [workdir, setWorkdir] = useState(null)
@@ -82,10 +82,28 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
   const [projet, setProjet] = useState(PROJET_INITIAL)
 
   const [lignes, setLignes] = useState([])
-  const [facteursCustom, setFacteursCustom] = useState([])
+  const [facteursState, setFacteursState] = useState({ facteurs: [], archivedCatalogIds: [] })
   const [sectionsStatus, setSectionsStatus] = useState({})
   const [sectionsAssignees, setSectionsAssignees] = useState({})
   const [factorNotice, setFactorNotice] = useState(null)
+  const facteursCustom = facteursState.facteurs
+  const archivedCatalogIds = facteursState.archivedCatalogIds
+
+  const setFacteursCustom = useCallback(updater => {
+    setFacteursState(previous => ({
+      ...previous,
+      facteurs: typeof updater === 'function' ? updater(previous.facteurs) : updater,
+    }))
+  }, [])
+
+  const setArchivedCatalogIds = useCallback(updater => {
+    setFacteursState(previous => ({
+      ...previous,
+      archivedCatalogIds: typeof updater === 'function'
+        ? updater(previous.archivedCatalogIds)
+        : updater,
+    }))
+  }, [])
 
   // Chargement du projet sélectionné depuis un fichier JSON local.
   useEffect(() => {
@@ -98,7 +116,9 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
         setProjet(data.projet)
         setSectionsStatus(data.sectionsStatus || {})
         setSectionsAssignees(data.sectionsAssignees || {})
-        const customFactors = await readFacteursCustom(workdir)
+        const factorState = await readFacteursCustom(workdir)
+        const customFactors = factorState.facteurs
+        setFacteursState(factorState)
         const sourceLines = data.lignes || []
         const factorsChanged = data.factorsVersion !== FACTORS_VERSION
         const nextLines = factorsChanged
@@ -107,24 +127,28 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
             resultat: calculerEmission(
               line.valeur,
               line.facteurId,
-              customFactors.find(factor => factor.id === line.facteurId) || null,
+              customFactors,
+              line.resultat,
             ),
           }))
           : sourceLines
         setLignes(nextLines)
-        setFacteursCustom(customFactors)
         if (factorsChanged) {
           const previousTotal = sourceLines.reduce((sum, line) => sum + (line.resultat?.total_t || 0), 0)
           const nextTotal = nextLines.reduce((sum, line) => sum + (line.resultat?.total_t || 0), 0)
-          const delta = nextTotal - previousTotal
-          const deltaPercent = previousTotal > 0 ? (delta / previousTotal) * 100 : 0
-          setFactorNotice(`Les facteurs ont été mis à jour (${FACTORS_VERSION}). Écart total : ${delta >= 0 ? '+' : ''}${delta.toFixed(3)} tCO₂e (${deltaPercent >= 0 ? '+' : ''}${deltaPercent.toFixed(1)} %).`)
+          const warnings = collectFactorWarnings(nextLines, customFactors)
+          setFactorNotice(formatFactorNotice({
+            version: FACTORS_VERSION,
+            previousTotal,
+            nextTotal,
+            warnings,
+          }))
         } else {
           setFactorNotice(null)
         }
       } catch (err) {
         console.error('Erreur chargement projet:', err)
-        setLoadError(`Impossible de charger ${projetPath}. Le fichier est-il toujours accessible ?`)
+        setLoadError(`Impossible de charger ${projetPath}. ${err.message || 'Le fichier est-il toujours accessible ?'}`)
       }
       setDataLoading(false)
     }
@@ -160,9 +184,9 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
 
   // Auto-save facteurs custom
   const saveFcFn = useCallback(async () => {
-    if (workdir) await writeFacteursCustom(workdir, facteursCustom)
-  }, [workdir, facteursCustom])
-  const { saveStatus: fcSaveStatus, retry: retryFc, flush: flushFacteurs } = useAutoSave(saveFcFn, facteursCustom)
+    if (workdir) await writeFacteursCustom(workdir, facteursState)
+  }, [workdir, facteursState])
+  const { saveStatus: fcSaveStatus, retry: retryFc, flush: flushFacteurs } = useAutoSave(saveFcFn, facteursState)
 
   useEffect(() => {
     if (!isTauri()) return undefined
@@ -388,32 +412,45 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
           <button onClick={() => setFactorNotice(null)} className="material-symbols-outlined text-sm">close</button>
         </div>
       )}
-
       <main className={`${showSidebar ? 'ml-64' : 'ml-0'} flex-1 p-8 pt-12 bg-surface`}>
-        {currentView === 'projet' && (
-          <ProjetForm projet={projet} setProjet={setProjet} onDemoFill={handleDemoFill} onReset={resetProjetState} lignes={lignes} setLignes={setLignes} />
-        )}
-        {collecteGroup && (
-          <CollecteForm collecteGroup={collecteGroup} currentView={currentView} lignes={lignes} setLignes={setLignes} facteursCustom={facteursCustom} sectionsStatus={sectionsStatus} setSectionsStatus={setSectionsStatus} sectionsAssignees={sectionsAssignees} secteur={projet.secteur} sites={projet.sites || []} />
-        )}
-        {currentView === 'avancement' && (
-          <Avancement lignes={lignes} sectionsStatus={sectionsStatus} setSectionsStatus={setSectionsStatus} sectionsAssignees={sectionsAssignees} setSectionsAssignees={setSectionsAssignees} setCurrentView={setCurrentView} />
-        )}
-        {currentView === 'facteurs' && (
-          <FacteursPanel facteursCustom={facteursCustom} setFacteursCustom={setFacteursCustom} />
-        )}
-        {currentView === 'espace-travail' && (
-          <EspaceTravail />
-        )}
-        {currentView === 'resultats' && (
-          <Resultats projet={projet} lignes={lignes} workdir={workdir} projetPath={projetPath} />
-        )}
-        {currentView === 'plan-action' && (
-          <PlanAction projet={projet} lignes={lignes} />
-        )}
-        {currentView === 'documentation' && (
-          <Documentation />
-        )}
+        <>
+            {currentView === 'projet' && (
+              <ProjetForm projet={projet} setProjet={setProjet} onDemoFill={handleDemoFill} onReset={resetProjetState} lignes={lignes} setLignes={setLignes} />
+            )}
+            {collecteGroup && (
+              <CollecteForm
+                collecteGroup={collecteGroup}
+                currentView={currentView}
+                lignes={lignes}
+                setLignes={setLignes}
+                facteursCustom={facteursCustom}
+                archivedCatalogIds={archivedCatalogIds}
+                sectionsStatus={sectionsStatus}
+                setSectionsStatus={setSectionsStatus}
+                sectionsAssignees={sectionsAssignees}
+                secteur={projet.secteur}
+                sites={projet.sites || []}
+              />
+            )}
+            {currentView === 'avancement' && (
+              <Avancement lignes={lignes} sectionsStatus={sectionsStatus} setSectionsStatus={setSectionsStatus} sectionsAssignees={sectionsAssignees} setSectionsAssignees={setSectionsAssignees} setCurrentView={setCurrentView} />
+            )}
+            {currentView === 'facteurs' && (
+              <FacteursPanel facteursCustom={facteursCustom} setFacteursCustom={setFacteursCustom} archivedCatalogIds={archivedCatalogIds} setArchivedCatalogIds={setArchivedCatalogIds} />
+            )}
+            {currentView === 'espace-travail' && (
+              <EspaceTravail />
+            )}
+            {currentView === 'resultats' && (
+              <Resultats projet={projet} lignes={lignes} workdir={workdir} projetPath={projetPath} />
+            )}
+            {currentView === 'plan-action' && (
+              <PlanAction projet={projet} lignes={lignes} />
+            )}
+            {currentView === 'documentation' && (
+              <Documentation onNavigate={setCurrentView} />
+            )}
+        </>
       </main>
 
       <footer className={`${showSidebar ? 'ml-64' : 'ml-0'} border-t border-surface-container px-8 py-6 bg-surface`}>

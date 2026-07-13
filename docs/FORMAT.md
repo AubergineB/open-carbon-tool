@@ -60,5 +60,29 @@ Ils ne sont jamais supprimés directement par l'application.
 
 Les facteurs personnalisés sont regroupés dans `facteurs-custom.json` à la racine
 du dossier de travail. Ils ne sont pas recopiés dans chaque bilan ; les lignes
-conservent leur `facteurId`.
+conservent leur `facteurId`. Le fichier est une enveloppe partagée par tous les
+bilans du dossier :
 
+```json
+{
+  "schemaVersion": 1,
+  "app": "open-carbon-tool",
+  "factorsVersion": "ademe-base-empreinte-23.6",
+  "updatedAt": "2026-07-13T00:00:00.000Z",
+  "facteurs": [
+    {
+      "id": "facteur-custom-id",
+      "nom": "Facteur fournisseur",
+      "unite": "kg",
+      "valeur": 1.23,
+      "archived": false
+    }
+  ],
+  "archivedCatalogIds": []
+}
+```
+
+`archived` vaut `false` lorsqu'il est absent dans un ancien fichier. Archiver
+un facteur personnalisé bascule cet état sans supprimer l'objet. Les facteurs
+du catalogue embarqué restent inchangés : leurs identifiants archivés sont
+conservés dans `archivedCatalogIds`, également réversible.

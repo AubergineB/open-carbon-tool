@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
 import postesEmission from '../data/postesEmission'
-import { getFactorsByCategory } from '../data/emissionFactors'
+import { getFactorByIdWithCustom, getFactorsByCategory } from '../data/emissionFactors'
 import { calculerEmission } from '../utils/calculEngine'
+import { getSelectableFactorsForLine } from '../utils/factorFiltering'
 import { formatCO2 } from '../utils/formatEmission'
 import { collecteGroupsMap as groupConfigMap } from '../data/collecteGroups'
 import { getMaterialite } from '../data/materialiteSectorielle'
@@ -137,7 +138,7 @@ function AssigneeBadge({ assignee }) {
   )
 }
 
-function PosteSection({ poste, lignes, onAddLigne, onUpdateLigne, onRemoveLigne, facteursCustom, status, onStatusChange, assignee, materialite, sites }) {
+function PosteSection({ poste, lignes, onAddLigne, onUpdateLigne, onRemoveLigne, facteursCustom, archivedCatalogIds, status, onStatusChange, assignee, materialite, sites }) {
   const facteurs = getFactorsByCategory(poste.categorieFE).filter(f => !f.nonSelectable)
   const facteursCustomFiltered = facteursCustom.filter(f => f.categorieFE === poste.categorieFE)
   const icon = scopeIcons[poste.id] || 'eco'
@@ -288,6 +289,7 @@ function PosteSection({ poste, lignes, onAddLigne, onUpdateLigne, onRemoveLigne,
           onUpdate={(field, value) => onUpdateLigne(ligne._key, field, value)}
           onRemove={() => onRemoveLigne(ligne._key)}
           sites={sites}
+          archivedCatalogIds={archivedCatalogIds}
         />
       ))}
 
@@ -325,34 +327,48 @@ function PosteSection({ poste, lignes, onAddLigne, onUpdateLigne, onRemoveLigne,
   )
 }
 
-function LigneInput({ ligne, facteurs, facteursCustom, onUpdate, onRemove, sites }) {
+function LigneInput({ ligne, facteurs, facteursCustom, onUpdate, onRemove, sites, archivedCatalogIds }) {
+  const selectable = getSelectableFactorsForLine({
+    catalogFactors: facteurs,
+    customFactors: facteursCustom,
+    archivedCatalogIds,
+    facteurId: ligne.facteurId,
+  })
+  const hasMissingFactorOption = selectable.factorMissing && Boolean(ligne.facteurId)
+  const snapshot = ligne.resultat?.fe_utilise
+  const factorWarning = selectable.factorMissing
+    ? ligne.resultat?.feManquant === true
+      ? 'Facteur absent — calcul conservé depuis le snapshot. Le total affiché utilise total_t (émissions directes + amont).'
+      : ligne.resultat?.fe_utilise
+        ? 'Facteur absent — résultat enregistré à vérifier. Le total affiché utilise total_t (émissions directes + amont).'
+        : 'Facteur absent — résultat à revoir. Aucun snapshot exploitable n’est disponible.'
+    : null
+
   const calculerAvecFacteur = (valeur, facteurId) => {
-    const customFactor = facteursCustom.find(f => f.id === facteurId)
-    return customFactor
-      ? calculerEmission(valeur, null, customFactor)
-      : calculerEmission(valeur, facteurId)
+    return calculerEmission(valeur, facteurId, facteursCustom, ligne.resultat)
   }
 
   const handleValueChange = (value) => {
     const num = parseFloat(value)
     if (value !== '' && !isNaN(num) && num < 0) return
     onUpdate('valeur', value)
-    if (value && ligne.facteurId) onUpdate('resultat', calculerAvecFacteur(value, ligne.facteurId))
+    if (value !== '' && ligne.facteurId) onUpdate('resultat', calculerAvecFacteur(value, ligne.facteurId))
   }
 
   const handleFacteurChange = (facteurId) => {
     onUpdate('facteurId', facteurId)
 
     // Auto-détection proxy monétaire
-    const customFactor = facteursCustom.find(f => f.id === facteurId)
-    const fe = customFactor || facteurs.find(f => f.id === facteurId)
+    const fe = getFactorByIdWithCustom(facteurId, facteursCustom)
     if (fe && isMonetaire(fe.unite)) {
       onUpdate('precision', 'P0')
     } else if (ligne.precision === 'P0') {
       onUpdate('precision', 'P1')
     }
 
-    if (ligne.valeur && facteurId) onUpdate('resultat', calculerAvecFacteur(ligne.valeur, facteurId))
+    if (ligne.valeur !== '' && ligne.valeur !== null && ligne.valeur !== undefined && facteurId) {
+      onUpdate('resultat', calculerAvecFacteur(ligne.valeur, facteurId))
+    }
   }
 
   return (
@@ -360,7 +376,7 @@ function LigneInput({ ligne, facteurs, facteursCustom, onUpdate, onRemove, sites
       <div className="grid grid-cols-1 md:grid-cols-12 gap-x-8 gap-y-6">
         <div className="md:col-span-4 space-y-2">
           <label className="block text-[10px] font-bold text-outline uppercase tracking-widest">Type de donnée</label>
-          {facteurs.length === 0 && facteursCustom.length === 0 ? (
+          {selectable.catalogFactors.length === 0 && selectable.customFactors.length === 0 && !hasMissingFactorOption ? (
             <div className="py-2 border-b-2 border-surface-highest">
               <p className="text-xs text-secondary">
                 Aucun facteur standard disponible pour ce poste.
@@ -376,21 +392,41 @@ function LigneInput({ ligne, facteurs, facteursCustom, onUpdate, onRemove, sites
               className="w-full bg-transparent border-0 border-b-2 border-surface-highest focus:ring-0 focus:border-primary px-0 py-2 text-base font-headline font-medium transition-all"
             >
               <option value="">— Sélectionner —</option>
-              {facteurs.length > 0 && (
+              {hasMissingFactorOption && (
+                <option value={ligne.facteurId}>
+                  {snapshot?.nom || ligne.facteurId} — Facteur absent
+                </option>
+              )}
+              {selectable.catalogFactors.length > 0 && (
                 <optgroup label="Base Carbone ADEME">
-                  {facteurs.map(f => (
-                    <option key={f.id} value={f.id}>{f.nom} ({f.unite})</option>
+                  {selectable.catalogFactors.map(f => (
+                    <option key={f.id} value={f.id}>
+                      {f.nom} ({f.unite}){selectable.currentIsArchived && f.id === ligne.facteurId ? ' — Archivé' : ''}
+                    </option>
                   ))}
                 </optgroup>
               )}
-              {facteursCustom.length > 0 && (
+              {selectable.customFactors.length > 0 && (
                 <optgroup label="Mes facteurs personnalisés">
-                  {facteursCustom.map(f => (
-                    <option key={f.id} value={f.id}>{f.nom} ({f.unite})</option>
+                  {selectable.customFactors.map(f => (
+                    <option key={f.id} value={f.id}>
+                      {f.nom} ({f.unite}){selectable.currentIsArchived && f.id === ligne.facteurId ? ' — Archivé' : ''}
+                    </option>
                   ))}
                 </optgroup>
               )}
             </select>
+          )}
+          {selectable.currentIsArchived && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-accent-warm" role="status">
+              <span className="material-symbols-outlined text-xs">archive</span>
+              Facteur archivé — restauration recommandée
+            </span>
+          )}
+          {factorWarning && (
+            <p className="text-[10px] font-bold text-error leading-relaxed" role="alert">
+              {factorWarning}
+            </p>
           )}
         </div>
 
@@ -398,7 +434,7 @@ function LigneInput({ ligne, facteurs, facteursCustom, onUpdate, onRemove, sites
           <label className="block text-[10px] font-bold text-outline uppercase tracking-widest">Quantité</label>
           <input
             type="number"
-            value={ligne.valeur || ''}
+            value={ligne.valeur ?? ''}
             onChange={e => handleValueChange(e.target.value)}
             className="w-full bg-transparent border-0 border-b-2 border-surface-highest focus:ring-0 focus:border-primary px-0 py-2 text-xl font-headline font-medium transition-all"
             placeholder="0.00"
@@ -412,8 +448,7 @@ function LigneInput({ ligne, facteurs, facteursCustom, onUpdate, onRemove, sites
             Qualité de la donnée
           </label>
           {(() => {
-            const customFactor = facteursCustom.find(f => f.id === ligne.facteurId)
-            const fe = customFactor || facteurs.find(f => f.id === ligne.facteurId)
+            const fe = selectable.currentFactor || snapshot
             const monetaire = fe && isMonetaire(fe.unite)
 
             if (monetaire) {
@@ -451,6 +486,11 @@ function LigneInput({ ligne, facteurs, facteursCustom, onUpdate, onRemove, sites
             className="w-full bg-transparent border-0 border-b-2 border-surface-highest focus:ring-0 focus:border-primary px-0 py-2 text-base font-headline font-medium transition-all"
             placeholder="Facture..."
           />
+          {ligne.sourceDetail && (
+            <p className="text-[10px] text-outline leading-relaxed">
+              Justificatif proposé : {ligne.sourceDetail}
+            </p>
+          )}
         </div>
 
         {sites.length > 0 && (
@@ -486,6 +526,11 @@ function LigneInput({ ligne, facteurs, facteursCustom, onUpdate, onRemove, sites
                   + {formatCO2(ligne.resultat.co2b_t, { suffixe: '' })} CO₂b
                 </span>
               )}
+              {factorWarning && (
+                <span className="block text-[10px] font-bold text-error mt-1 leading-relaxed" role="alert">
+                  {factorWarning}
+                </span>
+              )}
             </div>
             <button onClick={onRemove} className="material-symbols-outlined text-outline hover:text-error transition-colors text-sm">
               close
@@ -498,7 +543,7 @@ function LigneInput({ ligne, facteurs, facteursCustom, onUpdate, onRemove, sites
   )
 }
 
-export default function CollecteForm({ collecteGroup, currentView, lignes, setLignes, facteursCustom = [], sectionsStatus = {}, setSectionsStatus, sectionsAssignees = {}, secteur, sites = [] }) {
+export default function CollecteForm({ collecteGroup, currentView, lignes, setLignes, facteursCustom = [], archivedCatalogIds = [], sectionsStatus = {}, setSectionsStatus, sectionsAssignees = {}, secteur, sites = [] }) {
   const [selectedSite, setSelectedSite] = useState(null)
   const config = groupConfigMap[currentView] || groupConfigMap['collecte-energie']
   const groupPostes = useMemo(
@@ -624,6 +669,7 @@ export default function CollecteForm({ collecteGroup, currentView, lignes, setLi
               onUpdateLigne={handleUpdateLigne}
               onRemoveLigne={handleRemoveLigne}
               facteursCustom={facteursCustom}
+              archivedCatalogIds={archivedCatalogIds}
               status={sectionsStatus[poste.id] || 'inactive'}
               onStatusChange={handleStatusChange}
               assignee={sectionsAssignees[poste.id] || null}
@@ -643,6 +689,7 @@ export default function CollecteForm({ collecteGroup, currentView, lignes, setLi
                 onUpdateLigne={handleUpdateLigne}
                 onRemoveLigne={handleRemoveLigne}
                 facteursCustom={facteursCustom}
+                archivedCatalogIds={archivedCatalogIds}
                 status={sectionsStatus[poste.id]}
                 onStatusChange={handleStatusChange}
                 sites={sites}

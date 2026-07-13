@@ -9,7 +9,6 @@ import {
   readTextFile,
   remove,
   rename,
-  writeFile,
   writeTextFile,
 } from '@tauri-apps/plugin-fs'
 
@@ -423,36 +422,63 @@ async function customFactorsPath(workdir) {
   return pathFor(workdir, 'facteurs-custom.json')
 }
 
-export async function readFacteursCustom(workdir) {
-  const path = await customFactorsPath(workdir)
-  if (!(await pathExists(path))) return []
-  try {
-    const raw = JSON.parse(await readText(path))
-    return Array.isArray(raw.facteurs) ? raw.facteurs : []
-  } catch {
-    return []
+function normalizeFacteursCustomState(raw = {}) {
+  const rawFacteurs = Array.isArray(raw)
+    ? raw
+    : raw && Object.prototype.hasOwnProperty.call(raw, 'facteurs')
+      ? raw.facteurs
+      : []
+
+  if (!Array.isArray(rawFacteurs)) {
+    throw new Error('Le fichier facteurs-custom.json doit contenir un tableau "facteurs".')
   }
+
+  const invalidIndex = rawFacteurs.findIndex(facteur => (
+    !facteur
+    || typeof facteur !== 'object'
+    || Array.isArray(facteur)
+    || typeof facteur.id !== 'string'
+    || facteur.id.length === 0
+  ))
+  if (invalidIndex !== -1) {
+    throw new Error(`Entrée de facteur personnalisée invalide à la position ${invalidIndex + 1} : un objet avec un identifiant est requis.`)
+  }
+
+  const facteurs = rawFacteurs.map(facteur => ({
+    ...facteur,
+    archived: facteur.archived === true,
+  }))
+  const archivedCatalogIds = !Array.isArray(raw)
+    && Array.isArray(raw?.archivedCatalogIds)
+    ? [...new Set(raw.archivedCatalogIds.filter(id => typeof id === 'string' && id.length > 0))]
+    : []
+
+  return { facteurs, archivedCatalogIds }
 }
 
-export async function writeFacteursCustom(workdir, facteurs) {
+export async function readFacteursCustom(workdir) {
   const path = await customFactorsPath(workdir)
+  if (!(await pathExists(path))) return { facteurs: [], archivedCatalogIds: [] }
+  let raw
+  try {
+    raw = JSON.parse(await readText(path))
+  } catch (error) {
+    throw new Error(`Impossible de lire facteurs-custom.json : ${error.message || 'JSON invalide'}`)
+  }
+  return normalizeFacteursCustomState(raw)
+}
+
+export async function writeFacteursCustom(workdir, state) {
+  const path = await customFactorsPath(workdir)
+  const { facteurs, archivedCatalogIds } = normalizeFacteursCustomState(state)
   const data = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     app: APP_ID,
     factorsVersion: FACTORS_VERSION,
     updatedAt: new Date().toISOString(),
     facteurs,
+    archivedCatalogIds,
   }
   await writeData(path, data)
 }
 
-export async function saveExportBytes(path, bytes) {
-  if (isNative()) {
-    await writeFile(path, bytes)
-    return
-  }
-  const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join('')
-  const files = browserFiles()
-  files[path] = btoa(binary)
-  saveBrowserFiles(files)
-}

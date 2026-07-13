@@ -1,27 +1,54 @@
 // Moteur de calcul — Bilan Carbone PME
 // Formule : Émission (tCO₂e) = Donnée d'activité × FE × Coefficient correcteur
 
-import { getFactorById } from '../data/emissionFactors'
+import { getFactorByIdWithCustom } from '../data/emissionFactors'
 
 // Calcul d'émission pour une ligne de donnée
-export function calculerEmission(donneActivite, facteurId, facteurCustom = null) {
-  const fe = facteurCustom || getFactorById(facteurId)
-  if (!fe || !donneActivite) return null
+export function calculerEmission(donneActivite, facteurId, facteursCustom = [], resultatPrecedent = null) {
+  const facteurCustomLegacy = !Array.isArray(facteursCustom)
+    && facteursCustom
+    && typeof facteursCustom === 'object'
+    ? facteursCustom
+    : null
+  const facteurIdDemande = facteurId || facteurCustomLegacy?.id
+  if (donneActivite === '' || donneActivite === null || donneActivite === undefined || !facteurIdDemande) return null
 
   const valeurActivite = parseFloat(donneActivite)
-  if (isNaN(valeurActivite) || valeurActivite < 0) return null
+  if (!Number.isFinite(valeurActivite) || valeurActivite < 0) return null
+
+  // Le troisième argument était historiquement un objet unique. Le convertir
+  // ici conserve la compatibilité sans introduire une seconde résolution.
+  const facteurs = Array.isArray(facteursCustom)
+    ? facteursCustom
+    : facteurCustomLegacy
+      ? [{ ...facteurCustomLegacy, id: facteurCustomLegacy.id || facteurIdDemande }]
+      : []
+  const facteurCourant = getFactorByIdWithCustom(facteurIdDemande, facteurs)
+  const snapshot = resultatPrecedent?.fe_utilise
+  const utiliserSnapshot = !facteurCourant
+
+  if (utiliserSnapshot && (!isUsableFactorSnapshot(snapshot) || snapshot.id !== facteurIdDemande)) return null
+
+  // Un snapshot est uniquement un secours : il ne doit pas être remplacé par
+  // un facteur vivant portant le même identifiant après sa suppression.
+  const fe = utiliserSnapshot ? snapshot : facteurCourant
+  if (!fe || typeof fe.unite !== 'string' || fe.unite.length === 0) return null
+  const valeurFe = fe.valeur
+  const amontFe = fe.amont ?? 0
+  const co2bFe = fe.co2b ?? 0
+  if (!Number.isFinite(valeurFe) || !Number.isFinite(amontFe) || !Number.isFinite(co2bFe)) return null
 
   // Émission en kgCO₂e
-  const emissionKg = valeurActivite * fe.valeur
+  const emissionKg = valeurActivite * valeurFe
   // Conversion en tCO₂e
   const emissionT = emissionKg / 1000
 
   // CO₂ biogénique (pour biomasse et biocarburants)
-  const co2bKg = fe.co2b ? valeurActivite * fe.co2b : 0
+  const co2bKg = valeurActivite * co2bFe
   const co2bT = co2bKg / 1000
 
   // Scope 3.3 — émissions amont (extraction, transport, raffinage)
-  const amontKg = fe.amont ? valeurActivite * fe.amont : 0
+  const amontKg = valeurActivite * amontFe
   const amontT = amontKg / 1000
 
   // Total = combustion directe + amont (pour affichage)
@@ -40,7 +67,19 @@ export function calculerEmission(donneActivite, facteurId, facteurCustom = null)
     fe_utilise: fe,
     donnee_brute: valeurActivite,
     unite: fe.unite,
+    facteurId: facteurIdDemande,
+    feManquant: utiliserSnapshot,
   }
+}
+
+function isUsableFactorSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return false
+  if (typeof snapshot.id !== 'string' || snapshot.id.length === 0) return false
+  if (typeof snapshot.unite !== 'string' || snapshot.unite.length === 0) return false
+  if (!Number.isFinite(snapshot.valeur)) return false
+  if (snapshot.amont !== undefined && snapshot.amont !== null && !Number.isFinite(snapshot.amont)) return false
+  if (snapshot.co2b !== undefined && snapshot.co2b !== null && !Number.isFinite(snapshot.co2b)) return false
+  return true
 }
 
 // Calcul d'incertitude par propagation quadratique
@@ -213,7 +252,7 @@ export function agregerScope2Dual(lignes) {
   lignes.forEach(ligne => {
     if (ligne.scope !== 2 || !ligne.resultat) return
     const snapshot = ligne.resultat.fe_utilise
-    const fe = (snapshot?.id && getFactorById(snapshot.id)) || snapshot || {}
+    const fe = (snapshot?.id && getFactorByIdWithCustom(snapshot.id)) || snapshot || {}
     const qty = ligne.resultat.donnee_brute
     const ownT = (typeof fe.valeur === 'number' && typeof qty === 'number')
       ? round3((qty * fe.valeur) / 1000)
@@ -225,11 +264,11 @@ export function agregerScope2Dual(lignes) {
     if ((fe.scope2method || 'location') === 'market') {
       mb_t = ownT
       mbSource = 'contrat'
-      const feLB = fe.lbFactorId ? getFactorById(fe.lbFactorId) : null
+      const feLB = fe.lbFactorId ? getFactorByIdWithCustom(fe.lbFactorId) : null
       lb_t = feLB ? round3((qty * feLB.valeur) / 1000) : ownT
     } else {
       lb_t = ownT
-      const feMB = fe.mbFallbackId ? getFactorById(fe.mbFallbackId) : null
+      const feMB = fe.mbFallbackId ? getFactorByIdWithCustom(fe.mbFallbackId) : null
       if (feMB) {
         mb_t = round3((qty * feMB.valeur) / 1000)
         mbSource = 'residuel'
