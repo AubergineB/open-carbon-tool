@@ -41,6 +41,43 @@ La vue Documentation vit dans l'app (cohérent local-first, hors-ligne), pas sur
 le site web. Le contenu est rédigé et validé dans le lot 11 et collé tel quel
 par l'agent d'implémentation ; le site (lot 05) pourra le réutiliser.
 
+## 2026-07-13 — Scope 2 : double restitution et mix résiduel imposé
+
+Conformité GHG Protocol Scope 2 Guidance : chaque ligne d'électricité apparaît
+dans les deux colonnes (LB = mix moyen du réseau ; MB = facteur contractuel si
+contrat, sinon mix résiduel imposé automatiquement). Le FE mix résiduel France
+retenu est le mix résiduel français 2022 en ACV, hors pertes en ligne :
+0,13005 kgCO₂e/kWh (130,05 gCO₂e/kWh), source ADEME / AIB — Residual Mix
+Results France 2022 ; validation Henri effectuée (checklist lot 12 fermée).
+L'ancien FE « Offre verte sans GO »
+(0.0569, étiqueté à tort FE résiduel) est corrigé. À défaut de mix résiduel
+publié (autres pays, réseaux de chaleur, monétaire, FE custom), le mix moyen
+sert de proxy MB — règle documentée dans le moteur.
+
+## 2026-07-13 — Facteur IA générative (ACV Mistral)
+
+Ajout d'un FE « Requête IA générative » : 1,14 gCO₂e par réponse de 400 tokens,
+issu de l'ACV de Mistral Large 2 (Mistral AI / Carbone 4 / ADEME, juillet 2025,
+ISO 14040/44). Source hors liste standard validée explicitement par Henri —
+c'est aujourd'hui la seule ACV complète publiée d'un LLM.
+
+## 2026-07-13 — Réfrigération : méthode par les achats seule recommandée
+
+Pour une PME, la quantité de fluide rechargée (attestations du frigoriste) est
+LA méthode de calcul des émissions fugitives. Les méthodes plus sophistiquées
+(screening par équipement, bilan matière — cf. guide EPA lié dans la fiche)
+sont jugées contre-productives à cette échelle. Le guide du poste le dit
+explicitement.
+
+## 2026-07-13 — Densités déchets : sources documentées (lot 15 fermé)
+
+Le convertisseur volume→masse déchets (lot 15) embarque 9 masses volumiques
+usuelles avec champ `source` par entrée dans `densitesDechets`
+(`conversionConstants.js`). Validation Henri déléguée à sources documentées
+(ADEME fiche déchets GES, Citeo, Elipso, guides BTP/collectivités) —
+checklist lot 15 fermée le 2026-07-13. L'UI les présente comme ordres de
+grandeur et renvoie aux pesées des bordereaux prestataire.
+
 ## 2026-07-11 — Assignation
 
 Les assignations sont des chaînes libres. Il n'existe plus de répertoire de membres

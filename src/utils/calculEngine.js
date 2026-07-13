@@ -194,18 +194,70 @@ export function agregerCO2Biogenique(lignes) {
   return { total: Math.round(total * 1000) / 1000, details }
 }
 
-// Agrégation Scope 2 Location-Based vs Market-Based
-export function agregerScope2LBMB(lignes) {
-  const scope2Lines = lignes.filter(l => l.scope === 2 && l.resultat)
-  let lb = 0, mb = 0
-  scope2Lines.forEach(l => {
-    const method = l.resultat.fe_utilise?.scope2method || 'location'
-    if (method === 'market') mb += l.resultat.emission_t
-    else lb += l.resultat.emission_t
+// Double restitution Scope 2 — GHG Protocol Scope 2 Guidance.
+// Chaque ligne scope 2 apparaît dans LES DEUX colonnes :
+//  - Location-Based : quantité × FE mix moyen du réseau
+//    (fe.lbFactorId si FE contractuel, sinon FE de la ligne)
+//  - Market-Based : quantité × FE contractuel si contrat, sinon FE résiduel
+//    (fe.mbFallbackId), sinon le FE de la ligne sert de proxy
+//    (réseaux chaleur/froid, mix hors France, monétaire, FE custom).
+// Le FE est re-résolu par id : les snapshots persistés (fe_utilise) peuvent
+// être antérieurs à l'ajout de lbFactorId/mbFallbackId ou porter une valeur
+// corrigée depuis.
+export function agregerScope2Dual(lignes) {
+  const round3 = (v) => Math.round(v * 1000) / 1000
+  const details = []
+  let lbSum = 0
+  let mbSum = 0
+
+  lignes.forEach(ligne => {
+    if (ligne.scope !== 2 || !ligne.resultat) return
+    const snapshot = ligne.resultat.fe_utilise
+    const fe = (snapshot?.id && getFactorById(snapshot.id)) || snapshot || {}
+    const qty = ligne.resultat.donnee_brute
+    const ownT = (typeof fe.valeur === 'number' && typeof qty === 'number')
+      ? round3((qty * fe.valeur) / 1000)
+      : ligne.resultat.emission_t
+
+    let lb_t
+    let mb_t
+    let mbSource
+    if ((fe.scope2method || 'location') === 'market') {
+      mb_t = ownT
+      mbSource = 'contrat'
+      const feLB = fe.lbFactorId ? getFactorById(fe.lbFactorId) : null
+      lb_t = feLB ? round3((qty * feLB.valeur) / 1000) : ownT
+    } else {
+      lb_t = ownT
+      const feMB = fe.mbFallbackId ? getFactorById(fe.mbFallbackId) : null
+      if (feMB) {
+        mb_t = round3((qty * feMB.valeur) / 1000)
+        mbSource = 'residuel'
+      } else {
+        mb_t = ownT
+        mbSource = 'proxy'
+      }
+    }
+
+    lbSum += lb_t
+    mbSum += mb_t
+    details.push({ ligne, lb_t, mb_t, mbSource, isElec: (ligne.categorie_ghg || '').includes('Électricité achet') })
   })
+
+  const sub = (arr) => ({
+    lb: round3(arr.reduce((s, d) => s + d.lb_t, 0)),
+    mb: round3(arr.reduce((s, d) => s + d.mb_t, 0)),
+    count: arr.length,
+  })
+
   return {
-    locationBased: Math.round(lb * 1000) / 1000,
-    marketBased: Math.round(mb * 1000) / 1000,
-    total: Math.round((lb + mb) * 1000) / 1000,
+    locationBased: round3(lbSum),
+    marketBased: round3(mbSum),
+    count: details.length,
+    countContrats: details.filter(d => d.mbSource === 'contrat').length,
+    countResiduel: details.filter(d => d.mbSource === 'residuel').length,
+    electricite: sub(details.filter(d => d.isElec)),
+    autres: sub(details.filter(d => !d.isElec)),
+    details,
   }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { convertirMasseVolume, convertirPcsPci, estimerTkmDepuisEuros } from './conversions'
+import { convertirMasseVolume, convertirPcsPci, estimerTkmDepuisEuros, convertirEnergie, convertirDechetsVolume } from './conversions'
 import { getFactorById, getFactorsByCategory } from '../data/emissionFactors'
 
 describe('convertirMasseVolume', () => {
@@ -62,5 +62,46 @@ describe('estimerTkmDepuisEuros', () => {
 
   it('retourne null pour une entrée invalide', () => {
     expect(estimerTkmDepuisEuros({ montantEur: -100, modeFacteurId: 'fret_routier_moy_tkm' })).toBeNull()
+  })
+})
+
+describe('convertirEnergie', () => {
+  it('convertit 1 kWh en 3.6 MJ', () => {
+    expect(convertirEnergie(1, 'kwh', 'mj')).toBeCloseTo(3.6, 6)
+  })
+
+  it('convertit 1 tep en 11630 kWh', () => {
+    expect(convertirEnergie(1, 'tep', 'kwh')).toBeCloseTo(11630, 6)
+  })
+
+  it('convertit 1000 kWh en tep', () => {
+    expect(convertirEnergie(1000, 'kwh', 'tep')).toBeCloseTo(0.08598, 4)
+  })
+
+  it('reste stable sur un aller-retour', () => {
+    const x = 42.5
+    const converted = convertirEnergie(convertirEnergie(x, 'mj', 'gj'), 'gj', 'mj')
+    expect(converted).toBeCloseTo(x, 6)
+  })
+
+  it('retourne null pour une unité inconnue ou une valeur non finie', () => {
+    expect(convertirEnergie(1, 'inconnu', 'kwh')).toBeNull()
+    expect(convertirEnergie(NaN, 'kwh', 'mj')).toBeNull()
+  })
+})
+
+describe('convertirDechetsVolume', () => {
+  it('convertit 10 m³ de cartons en vrac en 0.8 t', () => {
+    const resultat = convertirDechetsVolume(10, 'carton_vrac')
+    expect(resultat.resultat).toBeCloseTo(0.8, 6)
+    expect(resultat.source).toContain('ADEME')
+  })
+
+  it('retourne null pour un type inconnu', () => {
+    expect(convertirDechetsVolume(10, 'inconnu')).toBeNull()
+  })
+
+  it('retourne null pour un volume négatif', () => {
+    expect(convertirDechetsVolume(-1, 'carton_vrac')).toBeNull()
   })
 })

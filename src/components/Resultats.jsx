@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import { save } from '@tauri-apps/plugin-dialog'
 import { openPath } from '@tauri-apps/plugin-opener'
-import { agregerParScope, agregerParCategorie, getTopPostes, controlerCoherence, calculerQualiteDonnees, agregerCO2Biogenique, agregerScope2LBMB } from '../utils/calculEngine'
+import { agregerParScope, agregerParCategorie, getTopPostes, controlerCoherence, calculerQualiteDonnees, agregerCO2Biogenique, agregerScope2Dual } from '../utils/calculEngine'
+import Tooltip from './Tooltip'
 import { useMultiYearData } from '../hooks/useMultiYearData'
 import EvolutionPanel from './evolution/EvolutionPanel'
 import { genererRapportPDF } from '../utils/pdfExport'
@@ -90,7 +91,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
   const { alertes } = useMemo(() => controlerCoherence(projet, filteredLignes), [projet, filteredLignes])
   const qualite = useMemo(() => calculerQualiteDonnees(filteredLignes), [filteredLignes])
   const co2b = useMemo(() => agregerCO2Biogenique(filteredLignes), [filteredLignes])
-  const scope2lbmb = useMemo(() => agregerScope2LBMB(filteredLignes), [filteredLignes])
+  const scope2dual = useMemo(() => agregerScope2Dual(filteredLignes), [filteredLignes])
 
   const [scope3Expanded, setScope3Expanded] = useState(false)
   const [viewMode, setViewMode] = useState('ghg')
@@ -260,14 +261,6 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
     rows.forEach(l => { const k = l.categorie_ghg || 'Non classé'; if (!grouped[k]) grouped[k] = { total: 0, count: 0 }; grouped[k].total += l.resultat.total_t; grouped[k].count++ })
     if (resultats.scope33Amont > 0) { const k = 'Cat. 3 — Émissions liées à l\'énergie (amont)'; if (!grouped[k]) grouped[k] = { total: 0, count: 0 }; grouped[k].total += resultats.scope33Amont }
 
-    // Scope 2 LB/MB split
-    const s2Rows = rows.filter(l => l.scope === 2)
-    let lbCount = 0, mbCount = 0
-    s2Rows.forEach(l => {
-      const method = l.resultat.fe_utilise?.scope2method || 'location'
-      if (method === 'market') mbCount++; else lbCount++
-    })
-
     const allCats = [
       'Scope 1 — Combustion fixe', 'Scope 1 — Combustion mobile', 'Scope 1 — Émissions fugitives',
       'Scope 2 — Électricité achetée (Location-Based)',
@@ -277,10 +270,14 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
     ]
     const find = (cat) => {
       if (cat === 'Scope 2 — Électricité achetée (Location-Based)') {
-        return scope2lbmb.locationBased > 0 ? { total: scope2lbmb.locationBased, count: lbCount } : null
+        return scope2dual.electricite.count > 0
+          ? { total: scope2dual.electricite.lb, count: scope2dual.electricite.count }
+          : null
       }
       if (cat === 'Scope 2 — Électricité achetée (Market-Based)') {
-        return scope2lbmb.marketBased > 0 ? { total: scope2lbmb.marketBased, count: mbCount } : null
+        return scope2dual.electricite.count > 0
+          ? { total: scope2dual.electricite.mb, count: scope2dual.electricite.count, info: true }
+          : null
       }
       if (grouped[cat]) return grouped[cat]
       const lb = cat.split(' — ')[1]
@@ -288,8 +285,11 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
       const k = Object.keys(grouped).find(k => k.includes(lb.substring(0, 12)))
       return k ? grouped[k] : null
     }
-    return allCats.map(cat => { const d = find(cat); return { cat, total: d ? round3(d.total) : null, count: d?.count || 0 } })
-  }, [filteredLignes, resultats, scope2lbmb])
+    return allCats.map(cat => {
+      const d = find(cat)
+      return { cat, total: d ? round3(d.total) : null, count: d?.count || 0, info: d?.info || false }
+    })
+  }, [filteredLignes, resultats, scope2dual])
 
   // BC exhaustive table
   const bcFullCategories = useMemo(() => {
@@ -304,7 +304,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
     if (resultats.scope33Amont > 0) lines.push(`  dont Scope 3.3 (amont énergie) : ${resultats.scope33Amont.toFixed(3)} tCO₂e`)
     if (co2b.total > 0) lines.push(`CO₂ biogénique : ${co2b.total.toFixed(3)} tCO₂ (hors total)`)
     lines.push('', '--- Détail GHG Protocol ---')
-    ghgFullCategories.forEach(c => lines.push(`${c.cat}\t${c.total !== null ? c.total.toFixed(3) : 'Non renseigné'}\ttCO₂e`))
+    ghgFullCategories.forEach(c => lines.push(`${c.cat}\t${c.total !== null ? c.total.toFixed(3) : 'Non renseigné'}\ttCO₂e${c.info ? ' (informatif)' : ''}`))
     lines.push('', `Généré le ${new Date().toLocaleDateString('fr-FR')} — Méthodologie BC® V9 / GHG Protocol`)
     navigator.clipboard.writeText(lines.join('\n'))
   }
@@ -741,19 +741,31 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
       </div>
 
       {/* === Scope 2 LB/MB === */}
-      {(scope2lbmb.locationBased > 0 || scope2lbmb.marketBased > 0) && (
+      {scope2dual.count > 0 && (
         <div className="bg-surface-low p-8 mb-12">
           <h4 className="font-headline text-xl font-bold text-primary uppercase tracking-tight mb-6">Scope 2 — Location-Based / Market-Based</h4>
           <div className="grid grid-cols-2 gap-8">
             <div className="bg-surface-lowest p-6">
               <span className="text-[10px] font-bold text-secondary uppercase tracking-widest block mb-3">Location-Based</span>
-              <span className="text-3xl font-headline font-bold text-primary">{formatVal(scope2lbmb.locationBased)}</span>
+              <span className="text-3xl font-headline font-bold text-primary">{formatVal(scope2dual.locationBased)}</span>
               <span className="text-sm text-secondary ml-1">tCO₂e</span>
+              <p className="text-[10px] text-outline mt-2">Mix moyen du réseau — {scope2dual.count} ligne(s)</p>
             </div>
             <div className="bg-surface-lowest p-6">
-              <span className="text-[10px] font-bold text-secondary uppercase tracking-widest block mb-3">Market-Based</span>
-              <span className="text-3xl font-headline font-bold text-primary">{formatVal(scope2lbmb.marketBased)}</span>
+              <span className="text-[10px] font-bold text-secondary uppercase tracking-widest block mb-3 flex items-center gap-1">
+                Market-Based
+                <Tooltip label="Méthode Market-Based">
+                  Reflète vos choix d&apos;approvisionnement : les lignes couvertes par un
+                  instrument contractuel (garanties d&apos;origine, offre verte) utilisent le
+                  facteur du contrat ; toutes les autres se voient appliquer automatiquement
+                  le mix résiduel France 2022 (ADEME/AIB, ACV) : 130 gCO₂e/kWh, plus de deux
+                  fois le mix moyen. À défaut de mix résiduel publié (autres pays, réseaux de
+                  chaleur), le mix moyen sert de proxy.
+                </Tooltip>
+              </span>
+              <span className="text-3xl font-headline font-bold text-primary">{formatVal(scope2dual.marketBased)}</span>
               <span className="text-sm text-secondary ml-1">tCO₂e</span>
+              <p className="text-[10px] text-outline mt-2">{scope2dual.countContrats} sous contrat · {scope2dual.countResiduel} au mix résiduel</p>
             </div>
           </div>
         </div>
@@ -791,6 +803,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
           {(() => {
             const fullCats = viewMode === 'ghg' ? ghgFullCategories : bcFullCategories
             return (
+              <>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b-2 border-primary">
@@ -806,7 +819,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                       <td className="py-3 text-xs font-medium text-primary">{row.cat}</td>
                       <td className="py-3 text-right text-xs text-secondary">{row.total !== null ? row.count : '—'}</td>
                       <td className={`py-3 text-right font-headline font-bold ${row.total !== null ? 'text-primary' : 'text-outline'}`}>{row.total !== null ? row.total.toFixed(3) : 'N/R'}</td>
-                      <td className="py-3 text-right text-xs font-bold text-secondary">{row.total !== null && resultats.total > 0 ? `${Math.round((row.total / resultats.total) * 100)}%` : '—'}</td>
+                      <td className="py-3 text-right text-xs font-bold text-secondary">{row.total !== null && resultats.total > 0 && !row.info ? `${Math.round((row.total / resultats.total) * 100)}%` : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -818,6 +831,12 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                   </tr>
                 </tfoot>
               </table>
+              {viewMode === 'ghg' && scope2dual.electricite.count > 0 && (
+                <p className="text-[10px] text-outline mt-4">
+                  Scope 2 électricité : restitution duale — la ligne Market-Based est informative, seule la ligne Location-Based entre dans le total.
+                </p>
+              )}
+              </>
             )
           })()}
         </div>

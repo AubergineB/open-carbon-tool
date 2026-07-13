@@ -2,7 +2,7 @@
 // Calculatrice autonome : ne lit ni n'écrit l'état du projet ou des lignes
 // de collecte, se contente de retourner un résultat à copier.
 
-import { densites, ratiosPcsPci } from '../data/conversionConstants'
+import { densites, ratiosPcsPci, energieVersKwh, densitesDechets } from '../data/conversionConstants'
 import { getFactorsByCategory, getFactorById } from '../data/emissionFactors'
 
 function estValeurValide(valeur) {
@@ -54,4 +54,17 @@ export function estimerTkmDepuisEuros({ montantEur, modeFacteurId }) {
   const tkm = emissions_kg / feMode.valeur
 
   return { emissions_t: emissions_kg / 1000, tkm, feMonetaire, feMode }
+}
+
+export function convertirEnergie(valeur, uniteFrom, uniteTo) {
+  const from = energieVersKwh[uniteFrom]
+  const to = energieVersKwh[uniteTo]
+  if (!from || !to || !Number.isFinite(valeur)) return null
+  return (valeur * from.kwh) / to.kwh
+}
+
+export function convertirDechetsVolume(volumeM3, typeId) {
+  const type = densitesDechets[typeId]
+  if (!type || !Number.isFinite(volumeM3) || volumeM3 < 0) return null
+  return { resultat: volumeM3 * type.t_m3, source: type.source }
 }

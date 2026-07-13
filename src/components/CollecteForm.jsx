@@ -103,6 +103,24 @@ function GuidePanel({ guide }) {
               </div>
             ))}
           </div>
+          {guide.liens?.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="material-symbols-outlined text-xs text-on-primary-container">open_in_new</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-outline">Pour aller plus loin</span>
+              </div>
+              <ul className="space-y-1.5">
+                {guide.liens.map((lien, i) => (
+                  <li key={i} className="flex gap-2 text-xs leading-relaxed">
+                    <span className="mt-[5px] w-1.5 h-1.5 bg-primary-container shrink-0" />
+                    <a href={lien.url} target="_blank" rel="noreferrer noopener" className="text-secondary underline underline-offset-2 hover:text-primary">
+                      {lien.titre}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -120,7 +138,7 @@ function AssigneeBadge({ assignee }) {
 }
 
 function PosteSection({ poste, lignes, onAddLigne, onUpdateLigne, onRemoveLigne, facteursCustom, status, onStatusChange, assignee, materialite, sites }) {
-  const facteurs = getFactorsByCategory(poste.categorieFE)
+  const facteurs = getFactorsByCategory(poste.categorieFE).filter(f => !f.nonSelectable)
   const facteursCustomFiltered = facteursCustom.filter(f => f.categorieFE === poste.categorieFE)
   const icon = scopeIcons[poste.id] || 'eco'
   const totalPoste = lignes.reduce((sum, l) => l.resultat ? sum + l.resultat.total_t : sum, 0)

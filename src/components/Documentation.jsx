@@ -33,6 +33,20 @@ function Bloc({ bloc }) {
       </div>
     )
   }
+  if (bloc.type === 'liens') {
+    return (
+      <ul className="space-y-3 my-4">
+        {bloc.items.map((item, i) => (
+          <li key={i} className="border-l-[3px] border-primary-container pl-4">
+            <a href={item.url} target="_blank" rel="noreferrer noopener" className="text-sm font-bold text-primary underline underline-offset-2 hover:text-on-primary-container">
+              {item.titre}
+            </a>
+            <p className="text-xs text-secondary leading-relaxed mt-0.5">{item.description}</p>
+          </li>
+        ))}
+      </ul>
+    )
+  }
   return null
 }
 

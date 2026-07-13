@@ -77,6 +77,7 @@ const postesEmission = [
       ou_trouver: [
         'Carnet de maintenance de la climatisation',
         'Attestation d\'intervention du frigoriste agréé',
+        'Factures d\'achat ou de recharge de fluide frigorigène',
       ],
       quoi_chercher: [
         'Kilogrammes de gaz rechargés dans l\'année',
@@ -88,8 +89,12 @@ const postesEmission = [
       erreurs_courantes: [
         'Confondre recharge annuelle et charge initiale à l\'installation',
         'Oublier les chambres froides et le matériel frigorifique',
+        'Chercher une méthode plus sophistiquée : le bilan matière ou le screening par équipement n\'apportent rien à l\'échelle d\'une PME',
       ],
-      pourquoi: 'Faible en volume mais GWP très élevé : R-410A = 2088 fois le CO₂. 1 kg perdu = plus de 2 tCO₂e.',
+      pourquoi: 'Faible en volume mais GWP très élevé : R-410A = 2088 fois le CO₂. 1 kg perdu = plus de 2 tCO₂e. La méthode par les achats de fluide (kg rechargés par le frigoriste) est LA méthode recommandée pour une PME : simple, traçable via les attestations d\'intervention, et suffisamment précise.',
+      liens: [
+        { titre: 'EPA — Fugitive Emissions Guidance : les autres méthodes de calcul (screening, bilan matière)', url: 'https://www.epa.gov/sites/default/files/2020-12/documents/fugitiveemissions.pdf' },
+      ],
     },
   },
 
@@ -172,15 +177,17 @@ const postesEmission = [
       quoi_chercher: [
         'Montants HT par catégorie de dépense (pas TTC)',
         'Catégories de dépense : informatique, conseil, nettoyage, assurance…',
+        'Exclure les lignes déjà comptées ailleurs avec une méthode plus précise : carburants, électricité, fret sous-traité',
       ],
       ordres_grandeur: [
         'PME 30 salariés tertiaire : 200 000 – 800 000 € HT d\'achats/an',
       ],
       erreurs_courantes: [
         'Utiliser les montants TTC au lieu de HT',
-        'Double compter des achats déjà traités en immobilisations',
+        'Double compter des achats déjà couverts par un poste dédié : carburants (véhicules), électricité, transport sous-traité (fret)',
+        'Inclure les immobilisations (bâtiments, machines, véhicules, gros IT) : elles relèvent du poste Biens d\'équipement',
       ],
-      pourquoi: 'Souvent 30 – 60 % du bilan carbone total d\'une PME tertiaire. C\'est le poste Scope 3 le plus lourd et le plus sous-estimé.',
+      pourquoi: 'Souvent 30 – 60 % du bilan carbone total d\'une PME tertiaire. C\'est le poste Scope 3 le plus lourd et le plus sous-estimé. Le périmètre se définit par soustraction : tout ce qui n\'est pas déjà compté par un poste plus précis, hors immobilisations.',
     },
   },
   {
@@ -373,7 +380,8 @@ const postesEmission = [
       ou_trouver: [
         'Données commerciales : volumes vendus par type de produit',
         'Fiches techniques produits : composition, consommation énergétique, durée de vie',
-        'Votre consultant bilan carbone — ce poste nécessite un accompagnement spécialisé',
+        'Syndicat ou fédération professionnelle : demander le standard de calcul sectoriel de votre industrie',
+        'Produit ou service non standard : prévoir une ACV personnalisée avec un consultant',
       ],
       quoi_chercher: [
         'Volume ou nombre d\'unités vendues dans l\'année, par gamme de produit',
@@ -387,11 +395,11 @@ const postesEmission = [
         'PME tertiaire pure (conseil, IT) : souvent non applicable (= 0)',
       ],
       erreurs_courantes: [
-        'Ignorer ce poste faute de FE ADEME standard (nécessite des FE personnalisés)',
+        'Ne pas calculer ce poste faute de FE ou de méthodologie sectorielle : c\'est l\'erreur la plus fréquente — et souvent la plus grosse part du bilan qui disparaît',
         'Confondre Cat. 11 (usage) avec Cat. 1 (achats) ou Cat. 10 (transformation)',
         'Double compter la combustion si le fournisseur l\'a déjà intégrée en Cat. 11',
       ],
-      pourquoi: 'Souvent le poste le plus lourd du bilan pour les entreprises vendant des produits physiques ou énergétiques. L\'absence de ce poste peut constituer un risque de sous-déclaration majeur. Ce calcul nécessite un accompagnement consultant pour construire les facteurs d\'émission personnalisés.',
+      pourquoi: 'Souvent le poste d\'émission le plus émissif, tous secteurs confondus — et le plus souvent omis. La démarche : 1) vérifier si votre fédération ou syndicat professionnel publie un standard de calcul sectoriel ; 2) sinon, construire des facteurs d\'émission personnalisés par une ACV de vos produits ou services, avec un accompagnement conseil. Omettre ce poste expose à une sous-déclaration majeure.',
     },
   },
   {
@@ -408,18 +416,22 @@ const postesEmission = [
       ou_trouver: [
         'Service IT : factures cloud (AWS, Azure, GCP, OVH…)',
         'Outils collaboratifs : Google Workspace, Microsoft 365 — statistiques d\'usage',
+        'Abonnements IA : nombre de comptes et statistiques de requêtes (ChatGPT, Le Chat, Copilot…)',
       ],
       quoi_chercher: [
         'Nombre d\'emails envoyés/jour par l\'ensemble des salariés',
         'Heures de visioconférence/mois et volume de stockage cloud (Go)',
+        'Nombre de requêtes d\'IA générative par mois (assistants, chatbots, génération de code)',
       ],
       ordres_grandeur: [
         'PME 30 salariés : 0.5 – 3 tCO₂e/an au total pour les usages numériques',
+        'Requête IA générative : 1,14 gCO₂e par réponse de 400 tokens (ACV Mistral Large 2, 2025)',
       ],
       erreurs_courantes: [
         'Surestimer l\'impact : souvent moins de 2 % du bilan carbone d\'une PME',
+        'Oublier l\'IA générative : usage en forte croissance, à suivre dès maintenant',
       ],
-      pourquoi: 'Faible en tCO₂e mais excellent levier de sensibilisation interne. Les équipements (laptops, serveurs) ont un impact bien supérieur aux usages.',
+      pourquoi: 'Faible en tCO₂e mais excellent levier de sensibilisation interne. Les équipements (laptops, serveurs) ont un impact bien supérieur aux usages. L\'IA générative reste modeste par requête mais croît très vite : c\'est le premier usage numérique à tracer.',
     },
   },
   {

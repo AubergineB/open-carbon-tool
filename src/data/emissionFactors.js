@@ -108,7 +108,7 @@ const emissionFactors = {
   // ============================================================
   electricite: [
     // --- Location-Based (mix réseau) ---
-    { id: 'elec_france_kwh', nom: 'Électricité France (mix moyen)', unite: 'kWh', valeur: 0.0569, incertitude: 10, perimetre: 'total', source: 'Base Carbone ADEME 2024 / RTE', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée', scope2method: 'location' },
+    { id: 'elec_france_kwh', nom: 'Électricité France (mix moyen)', unite: 'kWh', valeur: 0.0569, incertitude: 10, perimetre: 'total', source: 'Base Carbone ADEME 2024 / RTE', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée', scope2method: 'location', mbFallbackId: 'elec_residuel_france_kwh' },
     { id: 'elec_europe_kwh', nom: 'Électricité Europe (mix moyen)', unite: 'kWh', valeur: 0.310, incertitude: 15, perimetre: 'total', source: 'Base Carbone ADEME 2024 / AIE', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée', scope2method: 'location' },
     { id: 'elec_allemagne_kwh', nom: 'Électricité Allemagne', unite: 'kWh', valeur: 0.385, incertitude: 15, perimetre: 'total', source: 'Base Carbone ADEME 2024 / AIE', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée', scope2method: 'location' },
     { id: 'elec_espagne_kwh', nom: 'Électricité Espagne', unite: 'kWh', valeur: 0.187, incertitude: 15, perimetre: 'total', source: 'Base Carbone ADEME 2024 / AIE', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée', scope2method: 'location' },
@@ -118,8 +118,13 @@ const emissionFactors = {
     { id: 'elec_usa_kwh', nom: 'Électricité Etats-Unis', unite: 'kWh', valeur: 0.390, incertitude: 15, perimetre: 'total', source: 'Base Carbone ADEME 2024 / AIE', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée', scope2method: 'location' },
     { id: 'elec_chine_kwh', nom: 'Électricité Chine', unite: 'kWh', valeur: 0.585, incertitude: 15, perimetre: 'total', source: 'Base Carbone ADEME 2024 / AIE', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée', scope2method: 'location' },
     // --- Market-Based (contrat fournisseur) ---
-    { id: 'elec_renouv_kwh', nom: 'Électricité renouvelable (garantie origine)', unite: 'kWh', valeur: 0.012, incertitude: 30, perimetre: 'total', source: 'Base Carbone ADEME 2024', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée', scope2method: 'market' },
-    { id: 'elec_fournisseur_vert_kwh', nom: 'Offre verte fournisseur (sans GO)', unite: 'kWh', valeur: 0.0569, incertitude: 20, perimetre: 'total', source: 'Base Carbone ADEME 2024 — FE résiduel', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée', scope2method: 'market' },
+    { id: 'elec_renouv_kwh', nom: 'Électricité renouvelable (garantie origine)', unite: 'kWh', valeur: 0.012, incertitude: 30, perimetre: 'total', source: 'Base Carbone ADEME 2024', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée', scope2method: 'market', lbFactorId: 'elec_france_kwh' },
+    { id: 'elec_fournisseur_vert_kwh', nom: 'Offre verte fournisseur sans GO (mix résiduel)', unite: 'kWh', valeur: 0.13005, incertitude: 20, perimetre: 'total', source: 'ADEME / AIB — Mix résiduel France 2022, ACV, hors pertes en ligne', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée', scope2method: 'market', lbFactorId: 'elec_france_kwh' },
+    // --- Mix résiduel (imposé automatiquement en Market-Based, non sélectionnable) ---
+    // Règle : seul le résiduel France est embarqué. Pour les autres pays (pas de
+    // mbFallbackId), le mix moyen du réseau sert de proxy MB (hiérarchie GHG
+    // Protocol Scope 2 Guidance).
+    { id: 'elec_residuel_france_kwh', nom: 'Électricité France — mix résiduel', unite: 'kWh', valeur: 0.13005, incertitude: 20, perimetre: 'total', source: 'ADEME / AIB — Mix résiduel France 2022, ACV, hors pertes en ligne', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée', scope2method: 'market', lbFactorId: 'elec_france_kwh', nonSelectable: true },
     // --- Fallback monétaire ---
     { id: 'electricite_eur', nom: 'Électricité — fallback monétaire', unite: '€ HT', valeur: 0.310, incertitude: 80, perimetre: 'total', source: 'ADEME / SDES ratios monétaires 2023 (énergie)', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée', scope2method: 'location' },
   ],
@@ -362,6 +367,7 @@ const emissionFactors = {
     { id: 'num_streaming_heure', nom: 'Streaming video (1 heure)', unite: 'heure', valeur: 0.036, incertitude: 50, perimetre: 'total', source: 'ADEME / Impact CO2 2024', categorie_bc: 'Achats de produits ou services', categorie_ghg: 'Cat. 1 — Biens et services achetés' },
     { id: 'num_stockage_cloud_go_an', nom: 'Stockage cloud (1 Go, 1 an, France)', unite: 'Go.an', valeur: 0.029, incertitude: 50, perimetre: 'total', source: 'ADEME 2024', categorie_bc: 'Achats de produits ou services', categorie_ghg: 'Cat. 1 — Biens et services achetés' },
     { id: 'num_recherche_web', nom: 'Recherche web (1 requete)', unite: 'requete', valeur: 0.007, incertitude: 50, perimetre: 'total', source: 'ADEME 2024', categorie_bc: 'Achats de produits ou services', categorie_ghg: 'Cat. 1 — Biens et services achetés' },
+    { id: 'num_ia_requete', nom: 'Requête IA générative (réponse 400 tokens)', unite: 'requete', valeur: 0.00114, incertitude: 50, perimetre: 'total', source: 'Mistral AI / Carbone 4 / ADEME — ACV Mistral Large 2, juillet 2025', categorie_bc: 'Achats de produits ou services', categorie_ghg: 'Cat. 1 — Biens et services achetés' },
     { id: 'num_donnees_mobiles_go', nom: 'Donnees mobiles (1 Go)', unite: 'Go', valeur: 0.032, incertitude: 50, perimetre: 'total', source: 'ADEME 2024', categorie_bc: 'Achats de produits ou services', categorie_ghg: 'Cat. 1 — Biens et services achetés' },
     { id: 'num_donnees_wifi_go', nom: 'Donnees WiFi (1 Go)', unite: 'Go', valeur: 0.008, incertitude: 50, perimetre: 'total', source: 'ADEME 2024', categorie_bc: 'Achats de produits ou services', categorie_ghg: 'Cat. 1 — Biens et services achetés' },
     // --- Fallback monétaire ---
@@ -398,7 +404,7 @@ const emissionFactors = {
     { id: 'biogaz_kwh', nom: 'Biogaz / biométhane', unite: 'kWh PCI', valeur: 0.045, incertitude: 30, perimetre: 'total', source: 'Base Carbone ADEME 2024', categorie_bc: 'Émissions directes — Sources fixes', categorie_ghg: 'Scope 1 — Combustion fixe', co2b: 0.198 },
     { id: 'hydrogene_gris_kg', nom: 'Hydrogene gris (vaporeformage)', unite: 'kg', valeur: 11.5, incertitude: 30, perimetre: 'total', source: 'Base Carbone ADEME 2024', categorie_bc: 'Émissions directes — Sources fixes', categorie_ghg: 'Scope 1 — Combustion fixe' },
     { id: 'hydrogene_vert_kg', nom: 'Hydrogene vert (electrolyse ENR)', unite: 'kg', valeur: 2.0, incertitude: 50, perimetre: 'total', source: 'Base Carbone ADEME 2024', categorie_bc: 'Émissions directes — Sources fixes', categorie_ghg: 'Scope 1 — Combustion fixe' },
-    { id: 'pac_elec_kwh', nom: 'Pompe a chaleur electrique (COP 3)', unite: 'kWh thermique', valeur: 0.019, incertitude: 30, perimetre: 'total', source: 'Calcul : elec France / COP 3', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetee' },
+    { id: 'pac_elec_kwh', nom: 'Pompe a chaleur electrique (COP 3)', unite: 'kWh thermique', valeur: 0.019, incertitude: 30, perimetre: 'total', source: 'Calcul : elec France / COP 3', categorie_bc: 'Émissions indirectes — Électricité', categorie_ghg: 'Scope 2 — Électricité achetée' },
     // --- Fallback monétaire ---
     { id: 'energie_autre_eur', nom: 'Énergie alternative — fallback monétaire', unite: '€ HT', valeur: 0.310, incertitude: 80, perimetre: 'total', source: 'ADEME / SDES ratios monétaires 2023 (énergie)', categorie_bc: 'Émissions directes — Sources fixes', categorie_ghg: 'Scope 1 — Combustion fixe' },
   ],

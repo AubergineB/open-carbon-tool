@@ -1,9 +1,12 @@
 import { useState } from 'react'
-import { densites, ratiosPcsPci } from '../data/conversionConstants'
+import { densites, ratiosPcsPci, energieVersKwh, densitesDechets } from '../data/conversionConstants'
 import { getFactorsByCategory } from '../data/emissionFactors'
-import { convertirMasseVolume, convertirPcsPci, estimerTkmDepuisEuros } from '../utils/conversions'
+import { convertirMasseVolume, convertirPcsPci, estimerTkmDepuisEuros, convertirEnergie, convertirDechetsVolume } from '../utils/conversions'
 
 const fretFactorsTkm = getFactorsByCategory('fret').filter(f => f.unite === 'tkm')
+const fluidesFugitifs = getFactorsByCategory('fugitives').filter(f => f.unite === 'kg')
+const energieUnites = Object.keys(energieVersKwh)
+const dechetsTypes = Object.keys(densitesDechets)
 
 function parseInputValeur(raw) {
   if (raw === '' || raw == null) return NaN
@@ -253,6 +256,204 @@ function CarteTkm() {
   )
 }
 
+function CarteEnergie() {
+  const [uniteFrom, setUniteFrom] = useState('kwh')
+  const [uniteTo, setUniteTo] = useState('mj')
+  const [valeurRaw, setValeurRaw] = useState('')
+
+  const valeurNum = parseInputValeur(valeurRaw)
+  const resultat = convertirEnergie(valeurNum, uniteFrom, uniteTo)
+
+  function handleSwap() {
+    if (resultat) setValeurRaw(roundForInput(resultat))
+    setUniteFrom(uniteTo)
+    setUniteTo(uniteFrom)
+  }
+
+  return (
+    <section className="bg-surface-lowest p-8 border-t-[3px] border-primary-container space-y-6">
+      <h2 className="font-headline font-bold text-lg uppercase tracking-tight text-primary flex items-center gap-2">
+        <span className="material-symbols-outlined">bolt</span>
+        Énergie
+      </h2>
+
+      <div className="flex items-end gap-3">
+        <div className="flex-1 space-y-2">
+          <label className="block text-[10px] font-bold text-outline uppercase tracking-widest">Valeur</label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={valeurRaw}
+            onChange={e => setValeurRaw(e.target.value)}
+            className="w-full bg-transparent border-0 border-b-2 border-surface-highest focus:ring-0 focus:border-primary px-0 py-2 text-xl font-headline font-medium transition-all"
+          />
+        </div>
+        <select
+          value={uniteFrom}
+          onChange={e => setUniteFrom(e.target.value)}
+          className="bg-transparent border-0 border-b-2 border-surface-highest focus:ring-0 focus:border-primary px-0 py-2 text-sm font-headline font-medium"
+        >
+          {energieUnites.map(id => (
+            <option key={id} value={id}>{energieVersKwh[id].label}</option>
+          ))}
+        </select>
+        <SwapButton onClick={handleSwap} />
+        <select
+          value={uniteTo}
+          onChange={e => setUniteTo(e.target.value)}
+          className="bg-transparent border-0 border-b-2 border-surface-highest focus:ring-0 focus:border-primary px-0 py-2 text-sm font-headline font-medium"
+        >
+          {energieUnites.map(id => (
+            <option key={id} value={id}>{energieVersKwh[id].label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="min-h-[4rem]">
+        {resultat != null ? (
+          <>
+            <p className="font-headline text-3xl font-black text-primary">
+              ≈ {formatNombre(resultat)} {energieVersKwh[uniteTo].label}
+            </p>
+            <p className="mt-1 text-[10px] text-outline">1 kWh = 3,6 MJ · 1 tep = 11 630 kWh (convention AIE)</p>
+          </>
+        ) : (
+          <p className="text-sm text-outline">Saisir une valeur pour convertir.</p>
+        )}
+      </div>
+
+      <CopyButton text={resultat != null ? `${formatNombre(resultat)} ${energieVersKwh[uniteTo].label}` : ''} />
+    </section>
+  )
+}
+
+function CarteDechets() {
+  const [typeId, setTypeId] = useState(dechetsTypes[0])
+  const [volumeRaw, setVolumeRaw] = useState('')
+
+  const volumeNum = parseInputValeur(volumeRaw)
+  const resultat = convertirDechetsVolume(volumeNum, typeId)
+
+  return (
+    <section className="bg-surface-lowest p-8 border-t-[3px] border-primary-container space-y-6">
+      <h2 className="font-headline font-bold text-lg uppercase tracking-tight text-primary flex items-center gap-2">
+        <span className="material-symbols-outlined">delete</span>
+        Déchets volume → masse
+      </h2>
+
+      <div className="space-y-2">
+        <label className="block text-[10px] font-bold text-outline uppercase tracking-widest">Type de déchet</label>
+        <select
+          value={typeId}
+          onChange={e => setTypeId(e.target.value)}
+          className="w-full bg-transparent border-0 border-b-2 border-surface-highest focus:ring-0 focus:border-primary px-0 py-2 text-base font-headline font-medium transition-all"
+        >
+          {dechetsTypes.map(id => (
+            <option key={id} value={id}>{densitesDechets[id].label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-[10px] font-bold text-outline uppercase tracking-widest">Volume (m³)</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={volumeRaw}
+          onChange={e => setVolumeRaw(e.target.value)}
+          className="w-full bg-transparent border-0 border-b-2 border-surface-highest focus:ring-0 focus:border-primary px-0 py-2 text-xl font-headline font-medium transition-all"
+        />
+      </div>
+
+      <div className="min-h-[4rem]">
+        {resultat ? (
+          <>
+            <p className="font-headline text-3xl font-black text-primary">
+              ≈ {formatNombre(resultat.resultat)} t
+            </p>
+            <p className="mt-1 text-[10px] text-outline">{resultat.source}</p>
+          </>
+        ) : (
+          <p className="text-sm text-outline">Saisir un volume pour convertir.</p>
+        )}
+      </div>
+
+      <CopyButton text={resultat ? `${formatNombre(resultat.resultat)} t` : ''} />
+
+      <p className="text-[10px] text-outline">
+        Ordre de grandeur : la masse volumique réelle dépend du tassement.
+        Privilégiez les pesées du prestataire déchets (bordereaux).
+      </p>
+    </section>
+  )
+}
+
+function CarteFluides() {
+  const [fluideId, setFluideId] = useState(fluidesFugitifs[0]?.id || '')
+  const [kgRaw, setKgRaw] = useState('')
+
+  const kgNum = parseInputValeur(kgRaw)
+  const fe = fluidesFugitifs.find(f => f.id === fluideId)
+  const resultat = fe && Number.isFinite(kgNum) && kgNum >= 0 ? (kgNum * fe.valeur) / 1000 : null
+
+  return (
+    <section className="bg-surface-lowest p-8 border-t-[3px] border-primary-container space-y-6">
+      <h2 className="font-headline font-bold text-lg uppercase tracking-tight text-primary flex items-center gap-2">
+        <span className="material-symbols-outlined">mode_fan</span>
+        Fluides frigorigènes
+      </h2>
+
+      <div className="space-y-2">
+        <label className="block text-[10px] font-bold text-outline uppercase tracking-widest">Fluide</label>
+        <select
+          value={fluideId}
+          onChange={e => setFluideId(e.target.value)}
+          className="w-full bg-transparent border-0 border-b-2 border-surface-highest focus:ring-0 focus:border-primary px-0 py-2 text-base font-headline font-medium transition-all"
+        >
+          {fluidesFugitifs.map(f => (
+            <option key={f.id} value={f.id}>{f.nom}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-[10px] font-bold text-outline uppercase tracking-widest">Masse (kg)</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={kgRaw}
+          onChange={e => setKgRaw(e.target.value)}
+          className="w-full bg-transparent border-0 border-b-2 border-surface-highest focus:ring-0 focus:border-primary px-0 py-2 text-xl font-headline font-medium transition-all"
+        />
+      </div>
+
+      <div className="min-h-[5rem]">
+        {resultat != null ? (
+          <>
+            <p className="font-headline text-3xl font-black text-primary">
+              ≈ {formatNombre(resultat)} tCO₂e
+            </p>
+            {fe && (
+              <p className="mt-1 text-[10px] text-outline">
+                GWP {fe.valeur} kgCO₂e/kg — {fe.source}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-outline">Saisir une masse pour convertir.</p>
+        )}
+      </div>
+
+      <CopyButton text={resultat != null ? `${formatNombre(resultat)} tCO₂e` : ''} />
+
+      <p className="text-[10px] text-outline">
+        Calculatrice indicative : pour le bilan, saisissez les kg rechargés dans le
+        poste Climatisation et réfrigération.
+      </p>
+    </section>
+  )
+}
+
 export default function EspaceTravail() {
   return (
     <div>
@@ -271,6 +472,9 @@ export default function EspaceTravail() {
         <CarteMasseVolume />
         <CartePcsPci />
         <CarteTkm />
+        <CarteEnergie />
+        <CarteDechets />
+        <CarteFluides />
       </div>
     </div>
   )
