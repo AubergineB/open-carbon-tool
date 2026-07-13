@@ -86,3 +86,35 @@ bilans du dossier :
 un facteur personnalisé bascule cet état sans supprimer l'objet. Les facteurs
 du catalogue embarqué restent inchangés : leurs identifiants archivés sont
 conservés dans `archivedCatalogIds`, également réversible.
+
+## Format `.ocllm.json`
+
+Le fichier `collecte-gabarit.ocllm.json` est un gabarit local destiné à une
+structuration éventuelle hors de l’application. Il ne remplace pas un bilan et
+ne contient aucune clé d’API :
+
+```json
+{
+  "_instructions": {},
+  "format": "ocllm",
+  "schemaVersion": 1,
+  "app": "open-carbon-tool",
+  "factorsVersion": "ademe-base-empreinte-23.6",
+  "projet": { "nom": "Entreprise", "annee": "2025", "secteur": "" },
+  "postesActifs": [],
+  "facteursCustom": [],
+  "facteursCustomArchives": [],
+  "exemples": [],
+  "propositions": []
+}
+```
+
+`postesActifs` et leurs facteurs sont dérivés du catalogue local. Les facteurs
+archivés sont signalés comme non sélectionnables ; l’import ne crée jamais de
+facteur externe. Seules les propositions acceptées explicitement après revue
+humaine deviennent des lignes `.ocbilan.json`. Une ligne importée conserve
+`source: "llm-assiste"`, le commentaire de la proposition et une provenance
+contenant le nom du fichier, la version des facteurs, le JSON source et la
+proposition brute ; son `resultat.fe_utilise` reste le snapshot du facteur local
+utilisé pour le recalcul.
+

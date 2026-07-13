@@ -9,6 +9,7 @@ import {
   readTextFile,
   remove,
   rename,
+  writeFile,
   writeTextFile,
 } from '@tauri-apps/plugin-fs'
 
@@ -154,6 +155,9 @@ function normalizeLigne(raw = {}) {
     valeur: toNumber(raw.valeur),
     precision: raw.precision || 'P1',
     source: raw.source || '',
+    sourceDetail: raw.sourceDetail || raw.source_detail || '',
+    commentaire: raw.commentaire || '',
+    provenance: raw.provenance && typeof raw.provenance === 'object' ? raw.provenance : null,
     resultat: raw.resultat || null,
     site: raw.site || null,
   }
@@ -482,3 +486,33 @@ export async function writeFacteursCustom(workdir, state) {
   await writeData(path, data)
 }
 
+export async function saveExportBytes(path, bytes) {
+  if (isNative()) {
+    await writeFile(path, bytes)
+    return
+  }
+  const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join('')
+  const files = browserFiles()
+  files[path] = btoa(binary)
+  saveBrowserFiles(files)
+}
+
+export async function pickLocalJsonFile({
+  title = 'Importer un fichier JSON local',
+  name = 'Fichier JSON',
+} = {}) {
+  if (!isNative()) {
+    throw new Error('La sélection native de fichier est disponible uniquement dans l’application de bureau.')
+  }
+  const selected = await open({
+    title,
+    multiple: false,
+    filters: [{ name, extensions: ['json'] }],
+  })
+  if (!selected || Array.isArray(selected)) return null
+  return {
+    path: selected,
+    name: selected.split(/[\\/]/).pop() || 'fichier.json',
+    text: await readText(selected),
+  }
+}

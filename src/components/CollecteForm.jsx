@@ -7,6 +7,7 @@ import { formatCO2 } from '../utils/formatEmission'
 import { collecteGroupsMap as groupConfigMap } from '../data/collecteGroups'
 import { getMaterialite } from '../data/materialiteSectorielle'
 import { isTreated } from '../utils/statuts'
+import { LlmFilePicker } from './LlmReview'
 
 function isMonetaire(unite) {
   if (!unite) return false
@@ -543,7 +544,7 @@ function LigneInput({ ligne, facteurs, facteursCustom, onUpdate, onRemove, sites
   )
 }
 
-export default function CollecteForm({ collecteGroup, currentView, lignes, setLignes, facteursCustom = [], archivedCatalogIds = [], sectionsStatus = {}, setSectionsStatus, sectionsAssignees = {}, secteur, sites = [] }) {
+export default function CollecteForm({ collecteGroup, currentView, lignes, setLignes, facteursCustom = [], archivedCatalogIds = [], sectionsStatus = {}, setSectionsStatus, sectionsAssignees = {}, secteur, sites = [], onExportLlmTemplate = () => {}, onImportLlmFile = () => {} }) {
   const [selectedSite, setSelectedSite] = useState(null)
   const config = groupConfigMap[currentView] || groupConfigMap['collecte-energie']
   const groupPostes = useMemo(
@@ -632,6 +633,18 @@ export default function CollecteForm({ collecteGroup, currentView, lignes, setLi
             {config.label} — <span className="text-on-primary-container">{config.sublabel}</span>
           </h1>
           <p className="mt-4 text-secondary max-w-2xl leading-relaxed">{config.description}</p>
+
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => onExportLlmTemplate(currentView)}
+              className="flex items-center gap-2 bg-primary text-on-primary px-5 py-3 text-[10px] font-bold uppercase tracking-widest hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <span className="material-symbols-outlined text-sm" aria-hidden="true">download</span>
+              Exporter un gabarit LLM
+            </button>
+            <LlmFilePicker onImport={file => onImportLlmFile(file, currentView)} />
+          </div>
 
           {sites.length > 0 && (
             <div className="mt-6 flex items-center gap-2">

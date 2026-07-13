@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { isTauri } from '@tauri-apps/api/core'
-import { pickWorkdir, restoreWorkdir, readProjet, writeProjet, readFacteursCustom, writeFacteursCustom } from './lib/store'
+import { save as saveDialog } from '@tauri-apps/plugin-dialog'
+import { pickWorkdir, restoreWorkdir, readProjet, writeProjet, readFacteursCustom, writeFacteursCustom, pickLocalJsonFile, saveExportBytes } from './lib/store'
 import { useAutoSave } from './hooks/useAutoSave'
 import SaveIndicator from './components/SaveIndicator'
 import Header from './components/Header'
@@ -23,6 +24,15 @@ import postesEmission from './data/postesEmission'
 import { collecteGroupsMap } from './data/collecteGroups'
 import { FACTORS_VERSION } from './lib/store'
 import { collectFactorWarnings, formatFactorNotice } from './utils/factorWarnings'
+import LlmReview from './components/LlmReview'
+import {
+  buildAcceptedLlmLines,
+  buildLlmTemplate,
+  LLM_TEMPLATE_FILE_NAME,
+  parseLlmFile,
+  validateLlmFile,
+} from './utils/llmTemplate'
+
 function App() {
   const [showLegal, setShowLegal] = useState(false)
   const [workdir, setWorkdir] = useState(null)
@@ -73,6 +83,13 @@ const PROJET_INITIAL = {
   sites: [],
 }
 
+function allowedPosteIdsForView(view) {
+  const group = collecteGroupsMap[view]
+  return group
+    ? postesEmission.filter(poste => group.scopes.includes(poste.scope)).map(poste => poste.id)
+    : null
+}
+
 function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
   const [currentView, setCurrentView] = useState('collecte-energie')
   const [projetPath, setProjetPath] = useState(null)
@@ -87,6 +104,8 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
   const [sectionsStatus, setSectionsStatus] = useState({})
   const [sectionsAssignees, setSectionsAssignees] = useState({})
   const [factorNotice, setFactorNotice] = useState(null)
+  const [llmReview, setLlmReview] = useState(null)
+  const [llmNotice, setLlmNotice] = useState(null)
   const facteursCustom = facteursState.facteurs
   const archivedCatalogIds = facteursState.archivedCatalogIds
 
@@ -235,6 +254,129 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
     if (projetSaveStatus === 'error') retryProjet()
     if (fcSaveStatus === 'error') retryFc()
   }, [projetSaveStatus, fcSaveStatus, retryProjet, retryFc])
+
+  const handleExportLlmTemplate = useCallback(async (view = 'espace-travail') => {
+    setLlmNotice(null)
+    try {
+      const template = buildLlmTemplate({
+        projet,
+        lignes,
+        sectionsStatus,
+        facteursCustom,
+        archivedCatalogIds,
+        currentView: view,
+      })
+      const content = `${JSON.stringify(template, null, 2)}\n`
+
+      if (isTauri()) {
+        const destination = await saveDialog({
+          title: 'Exporter le gabarit de collecte assistée',
+          defaultPath: LLM_TEMPLATE_FILE_NAME,
+          filters: [{ name: 'Gabarit OCLLM', extensions: ['json'] }],
+        })
+        if (!destination) return
+        await saveExportBytes(destination, new TextEncoder().encode(content))
+      } else {
+        const blob = new Blob([content], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = LLM_TEMPLATE_FILE_NAME
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+      }
+
+      setLlmNotice({
+        type: 'success',
+        text: `Gabarit ${LLM_TEMPLATE_FILE_NAME} exporté localement.`,
+      })
+    } catch (error) {
+      setLlmNotice({
+        type: 'error',
+        text: error.message || 'Impossible d’exporter le gabarit local.',
+      })
+    }
+  }, [projet, lignes, sectionsStatus, facteursCustom, archivedCatalogIds])
+
+  const handleImportLlmFile = useCallback(async (file, sourceView = 'espace-travail') => {
+    setLlmNotice(null)
+    try {
+      const selected = file
+        ? { name: file.name || 'fichier.ocllm.json', text: await file.text() }
+        : await pickLocalJsonFile({
+          title: 'Importer un fichier de propositions OCLLM',
+          name: 'Gabarit OCLLM',
+        })
+      if (!selected) return
+
+      const data = parseLlmFile(selected.text)
+      const context = {
+        projet,
+        sectionsStatus,
+        facteursCustom,
+        archivedCatalogIds,
+        allowedPosteIds: allowedPosteIdsForView(sourceView),
+      }
+      const validation = validateLlmFile(data, context)
+      setLlmReview({
+        ...validation,
+        sourceFileName: selected.name,
+        sourceText: selected.text,
+        previousView: sourceView,
+        context,
+      })
+      setCurrentView('espace-travail')
+    } catch (error) {
+      setLlmNotice({
+        type: 'error',
+        text: error.message || 'Impossible de lire ce fichier OCLLM.',
+      })
+    }
+  }, [projet, sectionsStatus, facteursCustom, archivedCatalogIds])
+
+  const handleCloseLlmReview = useCallback(() => {
+    const previousView = llmReview?.previousView || 'espace-travail'
+    setLlmReview(null)
+    setLlmNotice(null)
+    setCurrentView(previousView)
+  }, [llmReview])
+
+  const handleCommitLlmReviews = useCallback(({ reviews, sourceFileName, sourceText, sourceData }) => {
+    if (!llmReview) return
+    const result = buildAcceptedLlmLines({
+      reviews,
+      context: {
+        ...llmReview.context,
+        projet,
+        sectionsStatus,
+        facteursCustom,
+        archivedCatalogIds,
+      },
+      sourceFileName,
+      sourceText,
+      sourceData,
+    })
+    if (result.erreurs.length > 0) {
+      setLlmNotice({
+        type: 'error',
+        text: `Import interrompu : ${result.erreurs.length} ligne(s) acceptée(s) ne peuvent plus être recalculée(s).`,
+      })
+      return
+    }
+    if (result.lignes.length === 0) {
+      setLlmNotice({ type: 'error', text: 'Aucune ligne acceptée à importer.' })
+      return
+    }
+
+    setLignes(previous => [...previous, ...result.lignes])
+    setLlmReview(null)
+    setLlmNotice({
+      type: 'success',
+      text: `${result.lignes.length} ligne(s) acceptée(s) ajoutée(s) après revue humaine.`,
+    })
+  }, [llmReview, projet, sectionsStatus, facteursCustom, archivedCatalogIds])
 
   const collecteGroup = collecteGroupsMap[currentView] || null
   const showSidebar = !!collecteGroup
@@ -413,8 +555,23 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
           <button onClick={() => setFactorNotice(null)} className="material-symbols-outlined text-sm">close</button>
         </div>
       )}
+      {llmNotice && (
+        <div className={`${showSidebar ? 'ml-64' : 'ml-0'} ${llmNotice.type === 'error' ? 'bg-error' : 'bg-primary-container'} text-on-primary px-8 py-3 flex items-center justify-between`} role="status">
+          <span className="text-xs font-bold uppercase tracking-widest">{llmNotice.text}</span>
+          <button onClick={() => setLlmNotice(null)} className="material-symbols-outlined text-sm" aria-label="Fermer le message">close</button>
+        </div>
+      )}
+
       <main className={`${showSidebar ? 'ml-64' : 'ml-0'} flex-1 p-8 pt-12 bg-surface`}>
-        <>
+        {llmReview ? (
+          <LlmReview
+            reviewFile={llmReview}
+            context={llmReview.context}
+            onClose={handleCloseLlmReview}
+            onCommit={handleCommitLlmReviews}
+          />
+        ) : (
+          <>
             {currentView === 'projet' && (
               <ProjetForm projet={projet} setProjet={setProjet} onDemoFill={handleDemoFill} onReset={resetProjetState} lignes={lignes} setLignes={setLignes} />
             )}
@@ -431,6 +588,8 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
                 sectionsAssignees={sectionsAssignees}
                 secteur={projet.secteur}
                 sites={projet.sites || []}
+                onExportLlmTemplate={handleExportLlmTemplate}
+                onImportLlmFile={handleImportLlmFile}
               />
             )}
             {currentView === 'avancement' && (
@@ -440,7 +599,10 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
               <FacteursPanel facteursCustom={facteursCustom} setFacteursCustom={setFacteursCustom} archivedCatalogIds={archivedCatalogIds} setArchivedCatalogIds={setArchivedCatalogIds} />
             )}
             {currentView === 'espace-travail' && (
-              <EspaceTravail />
+              <EspaceTravail
+                onExportLlmTemplate={() => handleExportLlmTemplate('espace-travail')}
+                onImportLlmFile={file => handleImportLlmFile(file, 'espace-travail')}
+              />
             )}
             {currentView === 'resultats' && (
               <Resultats projet={projet} lignes={lignes} workdir={workdir} projetPath={projetPath} />
@@ -454,7 +616,8 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
             {currentView === 'faq' && (
               <Faq onNavigate={setCurrentView} />
             )}
-        </>
+          </>
+        )}
       </main>
 
       <footer className={`${showSidebar ? 'ml-64' : 'ml-0'} border-t border-surface-container px-8 py-6 bg-surface`}>
