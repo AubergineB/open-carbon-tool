@@ -1,56 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import documentationSections from '../data/documentationContent'
+import DocumentationBloc from './DocumentationBloc'
 
-function Bloc({ bloc }) {
-  if (bloc.type === 'p') {
-    return <p className="text-sm text-secondary leading-relaxed mb-4">{bloc.texte}</p>
-  }
-  if (bloc.type === 'sousTitre') {
-    return (
-      <h3 className="font-headline font-bold uppercase text-sm text-primary tracking-tight mt-6 mb-3">
-        {bloc.texte}
-      </h3>
-    )
-  }
-  if (bloc.type === 'liste') {
-    return (
-      <ul className="mb-4 space-y-2">
-        {bloc.items.map((item, idx) => (
-          <li key={idx} className="flex items-start gap-3">
-            <span className="w-1.5 h-1.5 bg-primary-container mt-1.5 shrink-0" />
-            <span className="text-sm text-secondary leading-relaxed">{item}</span>
-          </li>
-        ))}
-      </ul>
-    )
-  }
-  if (bloc.type === 'encadre') {
-    const borderColor = bloc.ton === 'alerte' ? 'border-accent-red' : 'border-primary-container'
-    return (
-      <div className={`bg-surface-low p-5 border-l-[3px] ${borderColor} mb-4`}>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">{bloc.titre}</p>
-        <p className="text-sm text-secondary leading-relaxed">{bloc.texte}</p>
-      </div>
-    )
-  }
-  if (bloc.type === 'liens') {
-    return (
-      <ul className="space-y-3 my-4">
-        {bloc.items.map((item, i) => (
-          <li key={i} className="border-l-[3px] border-primary-container pl-4">
-            <a href={item.url} target="_blank" rel="noreferrer noopener" className="text-sm font-bold text-primary underline underline-offset-2 hover:text-on-primary-container">
-              {item.titre}
-            </a>
-            <p className="text-xs text-secondary leading-relaxed mt-0.5">{item.description}</p>
-          </li>
-        ))}
-      </ul>
-    )
-  }
-  return null
-}
-
-export default function Documentation() {
+export default function Documentation({ onNavigate }) {
   const [activeId, setActiveId] = useState(documentationSections[0]?.id)
   const sectionRefs = useRef({})
 
@@ -96,6 +48,19 @@ export default function Documentation() {
       </aside>
 
       <div className="max-w-3xl flex-1">
+        <div className="mb-10 border-l-[3px] border-primary-container bg-surface-low p-5">
+          <p className="text-sm text-secondary leading-relaxed mb-4">
+            Une question précise sur la comptabilité carbone ?
+          </p>
+          <button
+            type="button"
+            onClick={() => onNavigate?.('faq')}
+            className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary underline underline-offset-4 hover:text-on-primary-container focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            Voir la FAQ
+            <span className="material-symbols-outlined text-base" aria-hidden="true">arrow_forward</span>
+          </button>
+        </div>
         {documentationSections.map(section => (
           <section
             key={section.id}
@@ -108,7 +73,7 @@ export default function Documentation() {
               {section.titre}
             </h2>
             {section.blocs.map((bloc, idx) => (
-              <Bloc key={idx} bloc={bloc} />
+              <DocumentationBloc key={idx} bloc={bloc} />
             ))}
           </section>
         ))}
