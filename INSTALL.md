@@ -36,13 +36,15 @@ aussi le message « application endommagée ».
 
 ## Windows
 
-1. Téléchargez le `.msi`.
-2. Lancez l'installateur.
-3. Si SmartScreen apparaît, cliquez sur **Informations complémentaires**, puis
-   **Exécuter quand même**.
+1. Téléchargez le `.exe`.
+2. Lancez l'installateur. Il s'installe dans votre profil utilisateur et ne
+   demande **pas** de droits administrateur.
+3. Si SmartScreen apparaît (« Windows a protégé votre ordinateur »), cliquez sur
+   **Informations complémentaires** — le lien est discret, sous le message — puis
+   sur **Exécuter quand même**.
 
-L'absence de certificat EV explique cet avertissement ; elle ne signifie pas que
-les données sont envoyées à un serveur.
+L'absence de certificat de signature explique cet avertissement ; elle ne
+signifie pas que les données sont envoyées à un serveur.
 
 ## Linux
 

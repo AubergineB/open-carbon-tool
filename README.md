@@ -35,7 +35,7 @@ Téléchargez la dernière version depuis la page
 |---|---|
 | macOS (Apple Silicon) | `.dmg` (arm64) |
 | macOS (Intel) | `.dmg` (x64) |
-| Windows | `.msi` ou `.exe` |
+| Windows | `.exe` (installation sans droits administrateur) |
 | Linux | `.AppImage` ou `.deb` |
 
 Les bundles ne sont pas signés par un certificat commercial. Consultez

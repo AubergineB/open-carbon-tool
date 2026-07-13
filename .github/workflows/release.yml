@@ -52,7 +52,17 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_SIGNING_IDENTITY: '-'
+          # Signature Developer ID et notarisation dès que les secrets sont
+          # configurés (voir docs/RELEASE.md). Tant qu'ils sont absents, les
+          # variables valent la chaîne vide, tauri-action les ignore, et
+          # APPLE_SIGNING_IDENTITY retombe sur '-' : le build reste signé ad hoc
+          # comme aujourd'hui. Aucune release ne casse pendant la transition.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY || '-' }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Open Carbon Tool ${{ github.ref_name }}'

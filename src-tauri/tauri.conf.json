@@ -31,7 +31,6 @@
       "dmg",
       "app",
       "nsis",
-      "msi",
       "appimage",
       "deb"
     ],
@@ -45,6 +44,9 @@
     "windows": {
       "webviewInstallMode": {
         "type": "embedBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser"
       }
     },
     "android": {
