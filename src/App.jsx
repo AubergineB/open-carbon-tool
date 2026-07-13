@@ -167,16 +167,39 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
   useEffect(() => {
     if (!isTauri()) return undefined
     let unlisten
-    getCurrentWindow().onCloseRequested(async event => {
+    let disposed = false
+    let closing = false
+    const currentWindow = getCurrentWindow()
+
+    const handleCloseRequested = async event => {
       event.preventDefault()
+      if (closing) return
+      closing = true
       try {
-        await Promise.all([flushProjet(), flushFacteurs()])
-        await getCurrentWindow().destroy()
+        const [projetSaved, facteursSaved] = await Promise.all([flushProjet(), flushFacteurs()])
+        if (!projetSaved || !facteursSaved) {
+          throw new Error(`Sauvegarde incomplète avant fermeture (projet: ${projetSaved ? 'ok' : 'échec'}, facteurs: ${facteursSaved ? 'ok' : 'échec'}).`)
+        }
+        await currentWindow.destroy()
       } catch (error) {
-        console.error('Impossible de sauvegarder avant la fermeture :', error)
+        closing = false
+        console.error('Impossible de sauvegarder ou de fermer la fenêtre :', error)
       }
-    }).then(listener => { unlisten = listener })
-    return () => { unlisten?.() }
+    }
+
+    currentWindow.onCloseRequested(handleCloseRequested)
+      .then(listener => {
+        if (disposed) listener()
+        else unlisten = listener
+      })
+      .catch(error => {
+        console.error('Impossible d’enregistrer le gestionnaire de fermeture Tauri :', error)
+      })
+
+    return () => {
+      disposed = true
+      unlisten?.()
+    }
   }, [flushProjet, flushFacteurs])
 
   // Les quatre morceaux du bilan vivent désormais dans un seul fichier.

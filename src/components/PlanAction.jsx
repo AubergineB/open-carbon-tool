@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { agregerParScope, getTopPostes } from '../utils/calculEngine'
+import { formatNombre } from '../utils/formatEmission'
 
 // Suggestions de leviers de réduction par catégorie
 const LEVIERS = {
@@ -121,7 +122,7 @@ export default function PlanAction({ projet, lignes }) {
               Émissions à réduire
             </span>
             <span className="text-6xl font-headline font-light text-primary tracking-tighter">
-              {resultats.total < 10 ? resultats.total.toFixed(1) : Math.round(resultats.total)}
+              {formatNombre(resultats.total, { decimales: resultats.total < 10 ? 1 : 0 })}
               <span className="text-xl font-bold ml-1 uppercase">tCO₂e</span>
             </span>
           </div>

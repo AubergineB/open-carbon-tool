@@ -9,6 +9,7 @@ import EvolutionPanel from './evolution/EvolutionPanel'
 import { genererRapportPDF } from '../utils/pdfExport'
 import { genererRapportExcel } from '../utils/excelExport'
 import { saveExportBytes } from '../lib/store'
+import { formatNombre } from '../utils/formatEmission'
 
 const ghgScope3Categories = [
   { num: 1, label: 'Biens et services achetés' },
@@ -63,7 +64,6 @@ function mapToGHGScope3Cat(ligne) {
 
 const donutColors = ['#001D17', '#1B7A5A', '#FF5C67', '#D4880F', '#8B6FC0', '#BA1A1A', '#2196F3', '#FF9800', '#607D8B', '#9E9E9E']
 const toRad = (a) => (a * Math.PI) / 180
-const round3 = (v) => Math.round(v * 1000) / 1000
 const stripPrefix = (s) => s.replace(/^(Scope \d — |Cat\. \d+\/?\d* — |Émissions directes — |Émissions indirectes — )/, '')
 const viewTabs = [
   { id: 'ghg', label: 'GHG Protocol' },
@@ -115,7 +115,6 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
   }
 
   const hasData = resultats.total > 0
-  const formatVal = (v) => v < 1 ? `${(v * 1000).toFixed(0)} kg` : `${v.toFixed(1)}`
 
   // Bar chart data grouped by scope sub-categories
   const scopeBarData = useMemo(() => {
@@ -178,8 +177,8 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
       upstream += resultats.scope33Amont
     }
     return {
-      scope3Split: { upstream: round3(upstream), downstream: round3(downstream) },
-      scope3GHGBreakdown: ghgScope3Categories.map(c => ({ ...c, val: round3(buckets[c.num] || 0) })),
+      scope3Split: { upstream, downstream },
+      scope3GHGBreakdown: ghgScope3Categories.map(c => ({ ...c, val: buckets[c.num] || 0 })),
     }
   }, [filteredLignes, resultats])
 
@@ -216,14 +215,14 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
       const rest = s3Sorted.slice(4)
       top4.forEach(c => entries.push([`3.${c.num} ${c.label}`, c.val]))
       const restTotal = rest.reduce((s, c) => s + c.val, 0)
-      if (restTotal > 0) entries.push(['Autre', round3(restTotal)])
+      if (restTotal > 0) entries.push(['Autre', restTotal])
     } else {
       const s3Entries = scopeBarData.filter(d => d.scope === 3 && d.val > 0).sort((a, b) => b.val - a.val)
       const top4 = s3Entries.slice(0, 4)
       const rest = s3Entries.slice(4)
       top4.forEach(d => entries.push([d.cat, d.val]))
       const restTotal = rest.reduce((s, d) => s + d.val, 0)
-      if (restTotal > 0) entries.push(['Autre', round3(restTotal)])
+      if (restTotal > 0) entries.push(['Autre', restTotal])
     }
     return entries
   }, [scopeBarData, resultats, scope3Expanded, scope3Split, viewMode, scope3GHGBreakdown])
@@ -287,7 +286,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
     }
     return allCats.map(cat => {
       const d = find(cat)
-      return { cat, total: d ? round3(d.total) : null, count: d?.count || 0, info: d?.info || false }
+      return { cat, total: d ? d.total : null, count: d?.count || 0, info: d?.info || false }
     })
   }, [filteredLignes, resultats, scope2dual])
 
@@ -296,15 +295,22 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
     const rows = filteredLignes.filter(l => l.resultat)
     const grouped = {}
     rows.forEach(l => { const k = l.categorie_bc || 'Non classé'; if (!grouped[k]) grouped[k] = { total: 0, count: 0 }; grouped[k].total += l.resultat.total_t; grouped[k].count++ })
-    return bcCategories.map(c => { const d = grouped[c.label] || null; return { cat: c.label, total: d ? round3(d.total) : null, count: d?.count || 0 } })
+    return bcCategories.map(c => { const d = grouped[c.label] || null; return { cat: c.label, total: d ? d.total : null, count: d?.count || 0 } })
   }, [filteredLignes])
 
   const handleCopyBilan = () => {
-    const lines = [`Bilan Carbone — ${projet.nom || 'Projet'} — Exercice ${projet.annee || '2025'}`, '', `Total : ${resultats.total.toFixed(3)} tCO₂e`, `Scope 1 : ${resultats.scope1.toFixed(3)} tCO₂e`, `Scope 2 : ${resultats.scope2.toFixed(3)} tCO₂e`, `Scope 3 : ${resultats.scope3.toFixed(3)} tCO₂e`]
-    if (resultats.scope33Amont > 0) lines.push(`  dont Scope 3.3 (amont énergie) : ${resultats.scope33Amont.toFixed(3)} tCO₂e`)
-    if (co2b.total > 0) lines.push(`CO₂ biogénique : ${co2b.total.toFixed(3)} tCO₂ (hors total)`)
+    const lines = [
+      `Bilan Carbone — ${projet.nom || 'Projet'} — Exercice ${projet.annee || '2025'}`,
+      '',
+      `Total : ${formatNombre(resultats.total, { decimales: 3 })} tCO₂e`,
+      `Scope 1 : ${formatNombre(resultats.scope1, { decimales: 3 })} tCO₂e`,
+      `Scope 2 : ${formatNombre(resultats.scope2, { decimales: 3 })} tCO₂e`,
+      `Scope 3 : ${formatNombre(resultats.scope3, { decimales: 3 })} tCO₂e`,
+    ]
+    if (resultats.scope33Amont > 0) lines.push(`  dont Scope 3.3 (amont énergie) : ${formatNombre(resultats.scope33Amont, { decimales: 3 })} tCO₂e`)
+    if (co2b.total > 0) lines.push(`CO₂ biogénique : ${formatNombre(co2b.total, { decimales: 3 })} tCO₂ (hors total)`)
     lines.push('', '--- Détail GHG Protocol ---')
-    ghgFullCategories.forEach(c => lines.push(`${c.cat}\t${c.total !== null ? c.total.toFixed(3) : 'Non renseigné'}\ttCO₂e${c.info ? ' (informatif)' : ''}`))
+    ghgFullCategories.forEach(c => lines.push(`${c.cat}\t${c.total !== null ? formatNombre(c.total, { decimales: 3 }) : 'Non renseigné'}\ttCO₂e${c.info ? ' (informatif)' : ''}`))
     lines.push('', `Généré le ${new Date().toLocaleDateString('fr-FR')} — Méthodologie BC® V9 / GHG Protocol`)
     navigator.clipboard.writeText(lines.join('\n'))
   }
@@ -433,36 +439,36 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
         <div className="bg-surface-low p-8 relative">
           <span className="font-label text-[10px] font-bold text-secondary uppercase tracking-widest mb-4 block">Émissions totales</span>
           <div className="flex items-baseline gap-2">
-            <span className="text-5xl font-headline font-bold text-primary">{resultats.total < 10 ? resultats.total.toFixed(1) : Math.round(resultats.total)}</span>
+            <span className="text-5xl font-headline font-bold text-primary">{formatNombre(resultats.total, { decimales: resultats.total < 10 ? 1 : 0 })}</span>
             <span className="text-sm text-secondary">tCO₂e</span>
           </div>
           {co2b.total > 0 && (
-            <p className="text-[10px] text-secondary mt-2">+ <span className="font-bold">{formatVal(co2b.total)} t</span> CO₂ biogénique</p>
+            <p className="text-[10px] text-secondary mt-2">+ <span className="font-bold">{formatNombre(co2b.total, { decimales: 2 })} t</span> CO₂ biogénique</p>
           )}
           <div className="absolute bottom-0 left-0 w-full h-[4px] bg-primary" />
         </div>
         <div className="bg-surface-container p-8">
           <span className="font-label text-[10px] font-bold text-secondary uppercase tracking-widest mb-4 block">Scope 1 (Direct)</span>
           <div className="flex items-baseline gap-2">
-            <span className="text-5xl font-headline font-bold text-primary">{formatVal(resultats.scope1)}</span>
+            <span className="text-5xl font-headline font-bold text-primary">{formatNombre(resultats.scope1, { decimales: 2 })}</span>
             <span className="text-sm text-secondary">tCO₂e</span>
           </div>
         </div>
         <div className="bg-surface-high p-8">
           <span className="font-label text-[10px] font-bold text-secondary uppercase tracking-widest mb-4 block">Scope 2 (Énergie)</span>
           <div className="flex items-baseline gap-2">
-            <span className="text-5xl font-headline font-bold text-primary">{formatVal(resultats.scope2)}</span>
+            <span className="text-5xl font-headline font-bold text-primary">{formatNombre(resultats.scope2, { decimales: 2 })}</span>
             <span className="text-sm text-secondary">tCO₂e</span>
           </div>
         </div>
         <div className="bg-surface-highest p-8 relative">
           <span className="font-label text-[10px] font-bold text-secondary uppercase tracking-widest mb-4 block">Scope 3 (Indirect)</span>
           <div className="flex items-baseline gap-2">
-            <span className="text-5xl font-headline font-bold text-accent-red">{formatVal(resultats.scope3)}</span>
+            <span className="text-5xl font-headline font-bold text-accent-red">{formatNombre(resultats.scope3, { decimales: 2 })}</span>
             <span className="text-sm text-secondary">tCO₂e</span>
           </div>
           {resultats.scope33Amont > 0 && (
-            <p className="text-[10px] text-secondary mt-2">dont <span className="font-bold">{formatVal(resultats.scope33Amont)} t</span> S3.3 amont</p>
+            <p className="text-[10px] text-secondary mt-2">dont <span className="font-bold">{formatNombre(resultats.scope33Amont, { decimales: 2 })} t</span> S3.3 amont</p>
           )}
         </div>
       </div>
@@ -500,7 +506,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
               <div className="relative z-10 text-center">
                 {hoveredSegment !== null && donutEntries[hoveredSegment] ? (
                   <>
-                    <span className="block text-2xl font-headline font-bold text-primary">{Math.round((donutEntries[hoveredSegment][1] / resultats.total) * 100)}%</span>
+                    <span className="block text-2xl font-headline font-bold text-primary">{formatNombre((donutEntries[hoveredSegment][1] / resultats.total) * 100, { decimales: 0 })}%</span>
                     <span className="text-[9px] font-label text-secondary uppercase tracking-tighter leading-tight max-w-[100px] block">{stripPrefix(donutEntries[hoveredSegment][0])}</span>
                   </>
                 ) : (
@@ -513,7 +519,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
             </div>
             <div className="w-full space-y-3">
               {donutEntries.map(([cat, val], i) => {
-                const pct = resultats.total > 0 ? Math.round((val / resultats.total) * 100) : 0
+                const pct = resultats.total > 0 ? formatNombre((val / resultats.total) * 100, { decimales: 0 }) : '0'
                 const color = scopeColors[cat] || donutColors[i % donutColors.length]
                 const isHovered = hoveredSegment === i
                 return (
@@ -540,9 +546,15 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
         <div key={viewMode} className="col-span-12 lg:col-span-7 bg-surface-low p-10 view-transition">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-headline font-bold text-primary uppercase">Émissions par catégorie</h3>
-            <button onClick={toggleScope3} className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-primary hover:opacity-70 transition-opacity">
-              <span className="material-symbols-outlined text-sm" style={{ transform: scope3Expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>expand_more</span>
-              {scope3Expanded ? 'Réduire' : 'Détail'}
+            <button
+              type="button"
+              onClick={toggleScope3}
+              aria-expanded={scope3Expanded}
+              aria-controls="resultats-categories-detail"
+              className="flex items-center gap-2 border-2 border-primary bg-primary text-on-primary px-4 py-3 text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-primary-container hover:border-primary-container focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:translate-y-px"
+            >
+              <span className="material-symbols-outlined text-sm" aria-hidden="true" style={{ transform: scope3Expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>expand_more</span>
+              <span>{scope3Expanded ? 'Réduire' : 'Afficher le détail'}</span>
             </button>
           </div>
 
@@ -553,7 +565,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                 <div>
                   <div className="flex justify-between mb-1 items-end">
                     <span className="font-headline text-xs font-bold uppercase tracking-widest text-primary">{viewMode === 'bc' ? 'Énergie directe' : 'Scope 1'}</span>
-                    <span className="font-headline text-sm font-bold text-primary">{resultats.scope1.toFixed(2)} t</span>
+                    <span className="font-headline text-sm font-bold text-primary">{formatNombre(resultats.scope1, { decimales: 2 })} t</span>
                   </div>
                   <div className="h-5 bg-surface-highest w-full overflow-hidden"><div className="h-full bg-primary bar-fill-animate" style={{ width: `${(resultats.scope1 / resultats.total) * 100}%` }} /></div>
                 </div>
@@ -562,7 +574,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                 <div>
                   <div className="flex justify-between mb-1 items-end">
                     <span className="font-headline text-xs font-bold uppercase tracking-widest text-primary">{viewMode === 'bc' ? 'Énergie indirecte' : 'Scope 2'}</span>
-                    <span className="font-headline text-sm font-bold text-primary">{resultats.scope2.toFixed(2)} t</span>
+                    <span className="font-headline text-sm font-bold text-primary">{formatNombre(resultats.scope2, { decimales: 2 })} t</span>
                   </div>
                   <div className="h-5 bg-surface-highest w-full overflow-hidden"><div className="h-full bg-primary-container bar-fill-animate" style={{ width: `${(resultats.scope2 / resultats.total) * 100}%` }} /></div>
                 </div>
@@ -575,7 +587,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                       <div>
                         <div className="flex justify-between mb-1 items-end">
                           <span className="font-headline text-xs font-bold uppercase tracking-widest text-primary">Scope 3 upstream</span>
-                          <span className="font-headline text-sm font-bold text-accent-red">{scope3Split.upstream.toFixed(2)} t</span>
+                          <span className="font-headline text-sm font-bold text-accent-red">{formatNombre(scope3Split.upstream, { decimales: 2 })} t</span>
                         </div>
                         <div className="h-5 bg-surface-highest w-full overflow-hidden"><div className="h-full bg-accent-red bar-fill-animate" style={{ width: `${(scope3Split.upstream / resultats.total) * 100}%` }} /></div>
                       </div>
@@ -584,7 +596,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                       <div>
                         <div className="flex justify-between mb-1 items-end">
                           <span className="font-headline text-xs font-bold uppercase tracking-widest text-primary">Scope 3 downstream</span>
-                          <span className="font-headline text-sm font-bold text-accent-red">{scope3Split.downstream.toFixed(2)} t</span>
+                          <span className="font-headline text-sm font-bold text-accent-red">{formatNombre(scope3Split.downstream, { decimales: 2 })} t</span>
                         </div>
                         <div className="h-5 bg-surface-highest w-full overflow-hidden"><div className="h-full bg-error bar-fill-animate" style={{ width: `${(scope3Split.downstream / resultats.total) * 100}%` }} /></div>
                       </div>
@@ -597,7 +609,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                       <div>
                         <div className="flex justify-between mb-1 items-end">
                           <span className="font-headline text-xs font-bold uppercase tracking-widest text-primary">Chaîne de valeur (amont)</span>
-                          <span className="font-headline text-sm font-bold text-accent-red">{scope3Split.upstream.toFixed(2)} t</span>
+                          <span className="font-headline text-sm font-bold text-accent-red">{formatNombre(scope3Split.upstream, { decimales: 2 })} t</span>
                         </div>
                         <div className="h-5 bg-surface-highest w-full overflow-hidden"><div className="h-full bg-accent-red bar-fill-animate" style={{ width: `${(scope3Split.upstream / resultats.total) * 100}%` }} /></div>
                       </div>
@@ -606,7 +618,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                       <div>
                         <div className="flex justify-between mb-1 items-end">
                           <span className="font-headline text-xs font-bold uppercase tracking-widest text-primary">Chaîne de valeur (aval)</span>
-                          <span className="font-headline text-sm font-bold text-accent-red">{scope3Split.downstream.toFixed(2)} t</span>
+                          <span className="font-headline text-sm font-bold text-accent-red">{formatNombre(scope3Split.downstream, { decimales: 2 })} t</span>
                         </div>
                         <div className="h-5 bg-surface-highest w-full overflow-hidden"><div className="h-full bg-error bar-fill-animate" style={{ width: `${(scope3Split.downstream / resultats.total) * 100}%` }} /></div>
                       </div>
@@ -617,7 +629,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
             </div>
           ) : (
             /* === Étendu : sous-catégories === */
-            <div className="space-y-6">
+            <div id="resultats-categories-detail" className="space-y-6">
               {/* Scope 1 sub-categories */}
               {scopeBarData.filter(d => d.scope === 1).length > 0 && (
                 <div>
@@ -626,7 +638,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                     <div key={d.cat} className="mb-3 bar-item-enter" style={{ animationDelay: `${i * 0.06}s` }}>
                       <div className="flex justify-between mb-1 items-end">
                         <span className="font-headline text-xs font-bold uppercase tracking-widest text-primary truncate">{stripPrefix(d.cat)}</span>
-                        <span className="font-headline text-sm font-bold text-primary shrink-0 ml-2">{d.val.toFixed(2)} t</span>
+                        <span className="font-headline text-sm font-bold text-primary shrink-0 ml-2">{formatNombre(d.val, { decimales: 2 })} t</span>
                       </div>
                       <div className="h-5 bg-surface-highest w-full overflow-hidden"><div className="h-full bg-primary bar-fill-animate" style={{ width: `${(d.val / maxBarVal) * 100}%`, animationDelay: `${i * 0.06}s` }} /></div>
                     </div>
@@ -641,7 +653,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                     <div key={d.cat} className="mb-3 bar-item-enter" style={{ animationDelay: `${(i + 3) * 0.06}s` }}>
                       <div className="flex justify-between mb-1 items-end">
                         <span className="font-headline text-xs font-bold uppercase tracking-widest text-primary truncate">{stripPrefix(d.cat)}</span>
-                        <span className="font-headline text-sm font-bold text-primary shrink-0 ml-2">{d.val.toFixed(2)} t</span>
+                        <span className="font-headline text-sm font-bold text-primary shrink-0 ml-2">{formatNombre(d.val, { decimales: 2 })} t</span>
                       </div>
                       <div className="h-5 bg-surface-highest w-full overflow-hidden"><div className="h-full bg-primary-container bar-fill-animate" style={{ width: `${(d.val / maxBarVal) * 100}%`, animationDelay: `${(i + 3) * 0.06}s` }} /></div>
                     </div>
@@ -661,7 +673,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                           <div key={c.num} className="bar-item-enter" style={{ animationDelay: `${i * 0.06}s` }}>
                             <div className="flex justify-between mb-1 items-end">
                               <span className="font-headline text-xs font-bold text-primary"><span className="text-accent-red mr-1">3.{c.num}</span> {c.label}</span>
-                              <span className="font-headline text-sm font-bold text-accent-red shrink-0 ml-2">{c.val.toFixed(3)} t</span>
+                              <span className="font-headline text-sm font-bold text-accent-red shrink-0 ml-2">{formatNombre(c.val, { decimales: 3 })} t</span>
                             </div>
                             <div className="h-4 bg-surface-highest w-full overflow-hidden"><div className="h-full bg-accent-red/70 bar-fill-animate" style={{ width: `${(c.val / s3Max) * 100}%`, animationDelay: `${i * 0.06}s` }} /></div>
                           </div>
@@ -682,8 +694,8 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                     scopeBarData.filter(d => d.scope === 3).map((d, i) => (
                       <div key={d.cat} className="mb-3 bar-item-enter" style={{ animationDelay: `${i * 0.06}s` }}>
                         <div className="flex justify-between mb-1 items-end">
-                          <span className="font-headline text-xs font-bold uppercase tracking-widest text-primary truncate">{stripPrefix(d.cat)}</span>
-                          <span className="font-headline text-sm font-bold text-accent-red shrink-0 ml-2">{d.val.toFixed(2)} t</span>
+                        <span className="font-headline text-xs font-bold uppercase tracking-widest text-primary truncate">{stripPrefix(d.cat)}</span>
+                        <span className="font-headline text-sm font-bold text-accent-red shrink-0 ml-2">{formatNombre(d.val, { decimales: 2 })} t</span>
                         </div>
                         <div className="h-4 bg-surface-highest w-full overflow-hidden"><div className="h-full bg-accent-red/70 bar-fill-animate" style={{ width: `${(d.val / maxBarVal) * 100}%`, animationDelay: `${i * 0.06}s` }} /></div>
                       </div>
@@ -707,7 +719,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                 <div key={idx} className="bar-item-enter" style={{ animationDelay: `${idx * 0.08}s` }}>
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-xs font-label font-bold uppercase tracking-wide">{ligne.resultat.fe_utilise?.nom || 'Poste'}</span>
-                    <span className="text-xs font-headline font-bold text-primary">{ligne.resultat.total_t.toFixed(2)} t</span>
+                    <span className="text-xs font-headline font-bold text-primary">{formatNombre(ligne.resultat.total_t, { decimales: 2 })} t</span>
                   </div>
                   <div className="h-3 bg-surface-highest w-full overflow-hidden"><div className={`h-full bar-fill-animate ${idx < 2 ? 'bg-primary' : 'bg-primary-container'}`} style={{ width: `${Math.min(pct, 100)}%`, animationDelay: `${idx * 0.08}s` }} /></div>
                 </div>
@@ -718,14 +730,14 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
         <div className="bg-primary p-8 text-on-primary">
           <h4 className="font-headline font-bold text-sm uppercase tracking-widest mb-6">Intensité carbone</h4>
           <div className="flex items-baseline gap-2 mb-4">
-            <span className="text-4xl font-headline font-bold">{projet.effectif > 0 ? (resultats.total / projet.effectif).toFixed(1) : '—'}</span>
+            <span className="text-4xl font-headline font-bold">{projet.effectif > 0 ? formatNombre(resultats.total / projet.effectif, { decimales: 1 }) : '—'}</span>
             <span className="text-xs uppercase font-label">tCO₂e / salarié</span>
           </div>
           <div className="w-full bg-white/10 h-1 mt-4"><div className="bg-accent-red h-full" style={{ width: '65%' }} /></div>
           <p className="text-[10px] uppercase font-label mt-2 opacity-60">Moyenne PME France : 5-15 tCO₂e</p>
           {projet.ca > 0 && (
             <div className="mt-6 pt-4 border-t border-white/10">
-              <span className="text-2xl font-headline font-bold">{(resultats.total / (projet.ca / 1000000)).toFixed(1)}</span>
+              <span className="text-2xl font-headline font-bold">{formatNombre(resultats.total / (projet.ca / 1000000), { decimales: 1 })}</span>
               <span className="text-xs uppercase font-label ml-1">tCO₂e / M€ CA</span>
             </div>
           )}
@@ -747,7 +759,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
           <div className="grid grid-cols-2 gap-8">
             <div className="bg-surface-lowest p-6">
               <span className="text-[10px] font-bold text-secondary uppercase tracking-widest block mb-3">Location-Based</span>
-              <span className="text-3xl font-headline font-bold text-primary">{formatVal(scope2dual.locationBased)}</span>
+              <span className="text-3xl font-headline font-bold text-primary">{formatNombre(scope2dual.locationBased, { decimales: 2 })}</span>
               <span className="text-sm text-secondary ml-1">tCO₂e</span>
               <p className="text-[10px] text-outline mt-2">Mix moyen du réseau — {scope2dual.count} ligne(s)</p>
             </div>
@@ -763,7 +775,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                   chaleur), le mix moyen sert de proxy.
                 </Tooltip>
               </span>
-              <span className="text-3xl font-headline font-bold text-primary">{formatVal(scope2dual.marketBased)}</span>
+              <span className="text-3xl font-headline font-bold text-primary">{formatNombre(scope2dual.marketBased, { decimales: 2 })}</span>
               <span className="text-sm text-secondary ml-1">tCO₂e</span>
               <p className="text-[10px] text-outline mt-2">{scope2dual.countContrats} sous contrat · {scope2dual.countResiduel} au mix résiduel</p>
             </div>
@@ -776,7 +788,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
         <div className="bg-surface-container p-8 mb-12 border-l-4 border-primary-container">
           <h4 className="font-headline text-xl font-bold text-primary uppercase tracking-tight mb-2">CO₂ biogénique</h4>
           <p className="text-xs text-secondary mb-4">Reporté séparément, hors total GES (convention IPCC / GHG Protocol).</p>
-          <span className="text-3xl font-headline font-bold text-primary">{formatVal(co2b.total)}</span>
+          <span className="text-3xl font-headline font-bold text-primary">{formatNombre(co2b.total, { decimales: 2 })}</span>
           <span className="text-sm text-secondary ml-1">tCO₂ biogénique</span>
         </div>
       )}
@@ -818,15 +830,15 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
                     <tr key={idx} className={`border-b border-surface-container hover:bg-surface-low transition-colors ${row.total === null ? 'opacity-40' : ''}`}>
                       <td className="py-3 text-xs font-medium text-primary">{row.cat}</td>
                       <td className="py-3 text-right text-xs text-secondary">{row.total !== null ? row.count : '—'}</td>
-                      <td className={`py-3 text-right font-headline font-bold ${row.total !== null ? 'text-primary' : 'text-outline'}`}>{row.total !== null ? row.total.toFixed(3) : 'N/R'}</td>
-                      <td className="py-3 text-right text-xs font-bold text-secondary">{row.total !== null && resultats.total > 0 && !row.info ? `${Math.round((row.total / resultats.total) * 100)}%` : '—'}</td>
+                      <td className={`py-3 text-right font-headline font-bold ${row.total !== null ? 'text-primary' : 'text-outline'}`}>{row.total !== null ? formatNombre(row.total, { decimales: 3 }) : 'N/R'}</td>
+                      <td className="py-3 text-right text-xs font-bold text-secondary">{row.total !== null && resultats.total > 0 && !row.info ? `${formatNombre((row.total / resultats.total) * 100, { decimales: 0 })}%` : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-primary">
                     <td colSpan="2" className="py-4 font-headline font-black text-primary uppercase">Total</td>
-                    <td className="py-4 text-right font-headline font-black text-primary text-lg">{resultats.total.toFixed(3)} t</td>
+                    <td className="py-4 text-right font-headline font-black text-primary text-lg">{formatNombre(resultats.total, { decimales: 3 })} t</td>
                     <td className="py-4 text-right font-headline font-bold text-primary">100%</td>
                   </tr>
                 </tfoot>

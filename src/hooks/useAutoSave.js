@@ -21,24 +21,25 @@ export function useAutoSave(saveFn, data, delay = 800) {
   }, [saveFn])
 
   const doSave = useCallback(async () => {
-    if (!mountedRef.current) return
+    if (!mountedRef.current) return false
     setSaveStatus('saving')
     while (mountedRef.current) {
       try {
         await saveFnRef.current()
-        if (!mountedRef.current) return
+        if (!mountedRef.current) return false
         setSaveStatus('saved')
         retryCountRef.current = 0
-        return
+        return true
       } catch {
-        if (!mountedRef.current) return
+        if (!mountedRef.current) return false
         if (retryCountRef.current >= MAX_RETRIES) {
           setSaveStatus('error')
-          return
+          return false
         }
         retryCountRef.current++
       }
     }
+    return false
   }, [])
 
   const retry = useCallback(() => {
