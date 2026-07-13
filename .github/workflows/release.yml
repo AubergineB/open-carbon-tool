@@ -25,6 +25,17 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
 
+    # Au niveau du job, pour que le `if` de l'étape de notarisation du .dmg
+    # puisse tester env.APPLE_ID : dans un `if`, le contexte `env` ne voit pas
+    # les variables déclarées sur la même étape, et `secrets` n'y est pas exposé.
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY || '-' }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -49,23 +60,45 @@ jobs:
 
       - run: npm ci
 
+      # Les variables APPLE_* viennent de l'env du job. Sans secrets configurés,
+      # elles valent la chaîne vide — tauri-action les ignore — et
+      # APPLE_SIGNING_IDENTITY retombe sur '-', donc signature ad hoc, comme
+      # avant la notarisation. Voir docs/RELEASE.md.
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Signature Developer ID et notarisation dès que les secrets sont
-          # configurés (voir docs/RELEASE.md). Tant qu'ils sont absents, les
-          # variables valent la chaîne vide, tauri-action les ignore, et
-          # APPLE_SIGNING_IDENTITY retombe sur '-' : le build reste signé ad hoc
-          # comme aujourd'hui. Aucune release ne casse pendant la transition.
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY || '-' }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Open Carbon Tool ${{ github.ref_name }}'
           releaseBody: 'Téléchargements et instructions dans INSTALL.md.'
           args: --target ${{ matrix.target }}
+
+      # tauri-action notarise l'app puis construit le .dmg autour : le disque
+      # lui-même n'est jamais soumis à Apple. Or c'est le .dmg que l'utilisateur
+      # télécharge, donc que Gatekeeper évalue en premier — un .dmg non notarisé
+      # est bloqué à l'ouverture, même s'il contient une app impeccable.
+      # On le notarise, on lui agrafe son ticket, et on remplace l'asset publié.
+      - name: Notariser et agrafer le .dmg
+        if: runner.os == 'macOS' && env.APPLE_ID != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          DMG=$(find "src-tauri/target/${{ matrix.target }}/release/bundle/dmg" -name '*.dmg' -print -quit)
+          echo "dmg : $DMG"
+
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+          xcrun stapler staple "$DMG"
+          xcrun stapler validate "$DMG"
+
+          # Gatekeeper doit accepter le disque, pas seulement l'app qu'il contient.
+          spctl -a -vv -t open --context context:primary-signature "$DMG"
+
+          gh release upload "${{ github.ref_name }}" "$DMG" --clobber \
+            --repo "${{ github.repository }}"
 
