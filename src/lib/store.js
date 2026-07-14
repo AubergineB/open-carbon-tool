@@ -117,12 +117,8 @@ function slugify(value) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
-    .slice(0,  sixtyChars())
+    .slice(0, 60)
     || 'bilan'
-}
-
-function sixtyChars() {
-  return 60
 }
 
 function fileNameFor(projet) {
@@ -426,7 +422,7 @@ async function customFactorsPath(workdir) {
   return pathFor(workdir, 'facteurs-custom.json')
 }
 
-function normalizeFacteursCustomState(raw = {}) {
+export function normalizeFacteursCustomState(raw = {}) {
   const rawFacteurs = Array.isArray(raw)
     ? raw
     : raw && Object.prototype.hasOwnProperty.call(raw, 'facteurs')
