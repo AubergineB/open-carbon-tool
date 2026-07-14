@@ -70,7 +70,20 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Open Carbon Tool ${{ github.ref_name }}'
-          releaseBody: 'Téléchargements et instructions dans INSTALL.md.'
+          releaseBody: |
+            ## Quel fichier télécharger ?
+
+            | Votre machine | Fichier |
+            |---|---|
+            | Mac Apple Silicon (M1 et suivants) | `*_aarch64.dmg` |
+            | Mac Intel | `*_x64.dmg` |
+            | Windows | `*_x64-setup.exe` |
+            | Linux (Debian, Ubuntu) | `*_amd64.deb` |
+            | Linux (autres distributions) | `*_amd64.AppImage` |
+
+            Les fichiers `.app.tar.gz` ne servent pas à l'installation.
+
+            Instructions détaillées : [INSTALL.md](https://github.com/AubergineB/open-carbon-tool/blob/main/INSTALL.md)
           args: --target ${{ matrix.target }}
 
       # tauri-action notarise l'app puis construit le .dmg autour : le disque

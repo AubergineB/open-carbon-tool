@@ -1,5 +1,20 @@
 # Installation
 
+## Quel fichier télécharger ?
+
+| Votre machine | Fichier |
+|---|---|
+| Mac Apple Silicon (M1 et suivants, depuis fin 2020) | `Open.Carbon.Tool_x.y.z_aarch64.dmg` |
+| Mac Intel | `Open.Carbon.Tool_x.y.z_x64.dmg` |
+| Windows | `Open.Carbon.Tool_x.y.z_x64-setup.exe` |
+| Linux (Debian, Ubuntu) | `Open.Carbon.Tool_x.y.z_amd64.deb` |
+| Linux (autres distributions) | `Open.Carbon.Tool_x.y.z_amd64.AppImage` |
+
+Les fichiers `.app.tar.gz` ne servent pas à l'installation, ignorez-les.
+
+Sur Mac, en cas de doute : menu Pomme → À propos de ce Mac. La ligne « Puce »
+indique Apple M1/M2/M3/M4 (prenez `aarch64`) ou Intel (prenez `x64`).
+
 ## macOS
 
 Depuis la version 0.3.0, l'application est signée avec un certificat Apple

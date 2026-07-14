@@ -28,20 +28,23 @@ Vos données comptables, RH et opérationnelles restent dans des fichiers JSON s
 
 ## Installer
 
-Téléchargez la dernière version depuis la page
-[releases](https://github.com/AubergineB/open-carbon-tool/releases/latest).
+Téléchargez le fichier correspondant à votre machine depuis la page
+[releases](https://github.com/AubergineB/open-carbon-tool/releases/latest) :
 
-| Système | Fichier |
+| Votre machine | Fichier à télécharger |
 |---|---|
-| macOS (Apple Silicon) | `.dmg` (arm64) |
-| macOS (Intel) | `.dmg` (x64) |
-| Windows | `.exe` (installation sans droits administrateur) |
-| Linux | `.AppImage` ou `.deb` |
+| Mac Apple Silicon (M1 et suivants, depuis fin 2020) | `Open.Carbon.Tool_x.y.z_aarch64.dmg` |
+| Mac Intel | `Open.Carbon.Tool_x.y.z_x64.dmg` |
+| Windows | `Open.Carbon.Tool_x.y.z_x64-setup.exe` |
+| Linux (Debian, Ubuntu) | `Open.Carbon.Tool_x.y.z_amd64.deb` |
+| Linux (autres distributions) | `Open.Carbon.Tool_x.y.z_amd64.AppImage` |
 
-Les bundles macOS sont signés Apple Developer ID et notarisés : l'application
-s'ouvre au double-clic, sans avertissement. L'installeur Windows n'est pas signé
-et déclenche un avertissement SmartScreen ; il s'installe sans droits
-administrateur. Voir [INSTALL.md](INSTALL.md).
+Sur Mac, en cas de doute : menu Pomme → À propos de ce Mac. Si la ligne « Puce »
+mentionne Apple M1/M2/M3/M4, prenez `aarch64` ; si elle mentionne Intel, prenez `x64`.
+
+Sur macOS l'application est signée et notarisée : elle s'ouvre au double-clic.
+Sur Windows l'installeur n'est pas signé, SmartScreen affiche un avertissement
+à écarter manuellement. Détails dans [INSTALL.md](INSTALL.md).
 
 ## Fonctionnalités
 
@@ -58,7 +61,7 @@ administrateur. Voir [INSTALL.md](INSTALL.md).
 
 - fiches « Guide pratique » par poste, expliquant quoi demander et où trouver la donnée ;
 - suivi d'avancement par poste (inactif, actif, écarté, confirmé) et assignation en texte libre ;
-- collecte assistée par LLM sans réseau : export d'un gabarit JSON auto-documenté, remplissage par le LLM de votre choix en dehors de l'application, puis import et validation humaine ligne par ligne (voir plus bas) ;
+- collecte assistée par LLM en copié-collé : export d'un gabarit JSON auto-documenté, remplissage par le LLM de votre choix, puis import et validation ligne par ligne (voir plus bas) ;
 - espace de travail avec cinq convertisseurs sourcés — masse/volume, PCS/PCI, t.km fret, énergie, déchets ;
 - documentation méthodologique et FAQ de comptabilité carbone embarquées dans l'application.
 
@@ -87,19 +90,19 @@ Chaque facteur porte sa source, sa version et son unité (`kgCO₂e` par unité 
 
 Le total d'une ligne vaut `emission_t + amont_t`. L'agrégation par scope rattache automatiquement l'amont au Scope 3, et le CO₂ biogénique est agrégé à part.
 
-Le principe méthodologique est qu'aucun chiffre n'est produit sans facteur cité. L'outil ne substitue jamais un proxy silencieux à un facteur manquant : si le facteur n'existe pas, il faut le créer et le sourcer.
+Aucun chiffre n'est produit sans facteur cité : si un facteur manque, il faut le créer et le sourcer. Pas de proxy silencieux.
 
-## Collecte assistée par LLM, sans réseau
+## Collecte assistée par LLM
 
-L'application n'embarque **aucun SDK LLM, aucune clé API, aucun appel réseau**. L'assistance passe par un fichier :
+L'approche est volontairement simple : pas de connecteur, pas de MCP, pas de clé API. Juste un fichier à copier-coller vers le LLM de votre choix — libre à vous de faire ce que vous voulez de vos données.
 
 1. Open Carbon Tool exporte un gabarit auto-documenté `collecte-gabarit.ocllm.json` ;
-2. vous le confiez au LLM de votre choix, en dehors de l'application ;
+2. vous le confiez au LLM de votre choix, avec vos factures ou extractions comptables ;
 3. vous réimportez le fichier rempli dans une file de revue ;
 4. vous validez ou rejetez chaque ligne proposée ;
-5. seules les lignes acceptées sont insérées, et elles sont recalculées avec les facteurs connus de l'application.
+5. seules les lignes acceptées sont insérées, recalculées avec les facteurs connus de l'application.
 
-Un LLM propose une structuration de données. Il ne devient jamais une source de facteur d'émission.
+Le LLM structure des données, rien de plus. Il n'est jamais une source de facteur d'émission.
 
 ## Format ouvert
 
@@ -109,11 +112,15 @@ Chaque bilan est enregistré sous la forme `<slug>-<annee>.ocbilan.json`. Le for
 
 Les données restent sur la machine du consultant ou du client. Le dossier peut être placé dans un espace partagé pour collaborer, sans créer de compte ni transmettre les données à un tiers.
 
-## Limites assumées
+## Limites
 
 Open Carbon Tool est un outil de diagnostic et d'aide à la décision. Il ne constitue ni un bilan certifié par l'Association Bilan Carbone, ni un BEGES réglementaire, ni un audit externe.
 
 L'installeur Windows n'est pas signé : SmartScreen affiche un avertissement, qu'il faut écarter manuellement. Voir [INSTALL.md](INSTALL.md).
+
+## Statut du projet
+
+Le projet est livré tel quel, sans maintenance prévue : pas de suivi actif des issues ni des pull requests. Le code est sous licence MIT — forkez-le, adaptez-le, faites-en ce que vous voulez.
 
 ## Développement
 
@@ -134,7 +141,7 @@ Pour lancer la fenêtre native Tauri : `npm run tauri:dev`.
 | `npm run tauri:dev` | fenêtre desktop Tauri |
 | `npm run tauri:build` | bundles desktop (dmg/msi/AppImage/deb) |
 
-Stack : React 19, Vite 8, Tailwind CSS 4, Tauri v2. Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour les modalités de contribution.
+Stack : React 19, Vite 8, Tailwind CSS 4, Tauri v2. Prérequis : Node 24 et Rust stable pour la partie Tauri.
 
 ## Licence
 
