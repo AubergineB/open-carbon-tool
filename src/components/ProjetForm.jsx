@@ -1,4 +1,13 @@
 import { useState } from 'react'
+import { isTauri } from '@tauri-apps/api/core'
+import { confirm as confirmDialog } from '@tauri-apps/plugin-dialog'
+
+// window.confirm n'est pas supporté par toutes les webviews Tauri (wry) :
+// passer par le dialogue natif dans l'app de bureau.
+async function confirmer(message, title) {
+  if (isTauri()) return confirmDialog(message, { title, kind: 'warning' })
+  return window.confirm(message)
+}
 
 export default function ProjetForm({ projet, setProjet, onDemoFill, onReset, lignes = [], setLignes }) {
   const [newSite, setNewSite] = useState('')
@@ -14,11 +23,11 @@ export default function ProjetForm({ projet, setProjet, onDemoFill, onReset, lig
     setNewSite('')
   }
 
-  const handleRemoveSite = (site) => {
+  const handleRemoveSite = async (site) => {
     const orphansCount = lignes.filter(l => l.site === site).length
     if (orphansCount > 0) {
       const msg = `${orphansCount} ligne${orphansCount > 1 ? 's' : ''} ${orphansCount > 1 ? 'sont' : 'est'} associée${orphansCount > 1 ? 's' : ''} au site « ${site} ».\n\nOK : désassigner ces lignes du site (elles sont conservées).\nAnnuler : garder le site.`
-      if (!window.confirm(msg)) return
+      if (!(await confirmer(msg, 'Supprimer le site'))) return
       if (setLignes) {
         setLignes(prev => prev.map(l => l.site === site ? { ...l, site: null } : l))
       }
@@ -26,13 +35,21 @@ export default function ProjetForm({ projet, setProjet, onDemoFill, onReset, lig
     setProjet(prev => ({ ...prev, sites: (prev.sites || []).filter(s => s !== site) }))
   }
 
-  const handleResetClick = () => {
+  const handleResetClick = async () => {
     const n = lignes.length
     const msg = n > 0
       ? `Effacer toutes les données du projet ?\n\n${n} ligne${n > 1 ? 's' : ''} de collecte ${n > 1 ? 'seront supprimées' : 'sera supprimée'} définitivement, ainsi que les informations de l'entreprise.\n\nCette action est irréversible.`
       : `Effacer les informations du projet ?\n\nCette action est irréversible.`
-    if (!window.confirm(msg)) return
+    if (!(await confirmer(msg, 'Réinitialiser le projet'))) return
     onReset()
+  }
+
+  const handleDemoClick = async () => {
+    if (lignes.length > 0) {
+      const msg = `Remplacer les données actuelles par le jeu de démonstration ?\n\n${lignes.length} ligne${lignes.length > 1 ? 's' : ''} de collecte ${lignes.length > 1 ? 'seront remplacées' : 'sera remplacée'}.`
+      if (!(await confirmer(msg, 'Charger la démo'))) return
+    }
+    onDemoFill()
   }
 
   return (
@@ -50,7 +67,7 @@ export default function ProjetForm({ projet, setProjet, onDemoFill, onReset, lig
           <div className="flex items-center gap-3 shrink-0">
             {onDemoFill && (
               <button
-                onClick={onDemoFill}
+                onClick={handleDemoClick}
                 className="flex items-center gap-2 bg-accent-warm text-on-primary px-5 py-3 font-headline font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined text-sm">auto_fix_high</span>

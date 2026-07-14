@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { isTauri } from '@tauri-apps/api/core'
-import { save as saveDialog } from '@tauri-apps/plugin-dialog'
+import { save as saveDialog, ask as askDialog } from '@tauri-apps/plugin-dialog'
 import { pickWorkdir, restoreWorkdir, readProjet, writeProjet, readFacteursCustom, writeFacteursCustom, pickLocalJsonFile, saveExportBytes } from './lib/store'
 import { useAutoSave } from './hooks/useAutoSave'
 import SaveIndicator from './components/SaveIndicator'
@@ -221,13 +221,20 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
       closing = true
       try {
         const [projetSaved, facteursSaved] = await Promise.all([flushProjet(), flushFacteurs()])
-        if (!projetSaved || !facteursSaved) {
-          throw new Error(`Sauvegarde incomplète avant fermeture (projet: ${projetSaved ? 'ok' : 'échec'}, facteurs: ${facteursSaved ? 'ok' : 'échec'}).`)
+        if (projetSaved && facteursSaved) {
+          await currentWindow.destroy()
+          return
         }
-        await currentWindow.destroy()
+        console.error(`Sauvegarde incomplète avant fermeture (projet: ${projetSaved ? 'ok' : 'échec'}, facteurs: ${facteursSaved ? 'ok' : 'échec'}).`)
+        const fermerSansSauvegarder = await askDialog(
+          'La sauvegarde a échoué — le dossier de travail est-il toujours accessible ?\n\nFermer quand même ? Les modifications non sauvegardées seront perdues.',
+          { title: 'Sauvegarde impossible', kind: 'warning', okLabel: 'Fermer sans sauvegarder', cancelLabel: 'Annuler' },
+        )
+        if (fermerSansSauvegarder) await currentWindow.destroy()
       } catch (error) {
-        closing = false
         console.error('Impossible de sauvegarder ou de fermer la fenêtre :', error)
+      } finally {
+        closing = false
       }
     }
 
