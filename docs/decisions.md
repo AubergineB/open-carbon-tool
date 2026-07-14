@@ -84,3 +84,12 @@ Les assignations sont des chaînes libres. Il n'existe plus de répertoire de me
 ni d'envoi d'email ; l'interface propose une auto-complétion à partir des noms déjà
 utilisés.
 
+
+## 2026-07-14 — Dépendance xlsx : tarball officiel SheetJS
+
+SheetJS ne publie plus sur npm : la version npm `xlsx@0.18.5` reste figée avec
+deux vulnérabilités connues (prototype pollution, ReDoS) sans correctif.
+La dépendance pointe désormais vers le tarball officiel
+`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz` (API identique,
+vulnérabilités corrigées). Les mises à jour futures se font en changeant
+l'URL de version dans package.json, pas via `npm update`.
