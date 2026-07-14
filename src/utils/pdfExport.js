@@ -29,7 +29,7 @@ const CONTENT_W = PAGE_W - MARGIN * 2
 
 // Les polices PDF standard (Helvetica, fallback bureautique de la charte) ne
 // couvrent que cp1252 : ni le « ₂ » de tCO₂e ni les espaces fines d'Intl fr-FR.
-const fmt = (v, dec = 1) => formatNombre(v, { decimales: dec }).replace(/[  ]/g, ' ')
+const fmt = (v, dec = 1) => formatNombre(v, { decimales: dec }).replace(/[\u202F\u00A0]/g, ' ')
 
 const fmtTotal = (v) => (v < 10 ? fmt(v, 1) : fmt(v, 0))
 
