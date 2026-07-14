@@ -1,11 +1,32 @@
 name: Build
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
 
 jobs:
+  check:
+    name: Tests et lint
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run test
+      - run: npm run lint
+      - run: npm run build
+
   build:
     name: Build ${{ matrix.os }}
+    if: github.event_name == 'pull_request'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -39,4 +60,3 @@ jobs:
       - run: npm run test
       - run: npm run lint
       - run: npm run tauri:build
-
