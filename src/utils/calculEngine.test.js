@@ -221,6 +221,24 @@ describe('agregerScope2Dual', () => {
     expect(detail.mbSource).toBe('proxy')
   })
 
+  it('propage la correction d\'un FE custom scope 2 à la vue LB/MB', () => {
+    const ancienFe = { id: 'elec_custom', nom: 'Élec custom', unite: 'kWh', valeur: 0.2 }
+    const lignes = [{
+      scope: 2,
+      categorie_ghg: 'Scope 2 — Électricité achetée',
+      resultat: calculerEmission(1000, 'elec_custom', [ancienFe]),
+    }]
+    const feCorrige = { ...ancienFe, valeur: 0.1 }
+
+    const detail = agregerScope2Dual(lignes, [feCorrige]).details[0]
+    expect(detail.lb_t).toBeCloseTo(0.1, 3)
+    expect(detail.mb_t).toBeCloseTo(0.1, 3)
+
+    // Sans les facteurs custom, seul le snapshot figé est disponible.
+    const detailSansCustom = agregerScope2Dual(lignes).details[0]
+    expect(detailSansCustom.lb_t).toBeCloseTo(0.2, 3)
+  })
+
   it('re-résout un snapshot périmé par id', () => {
     const staleFe = {
       ...getFactorById('elec_fournisseur_vert_kwh'),

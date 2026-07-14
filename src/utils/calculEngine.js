@@ -243,7 +243,7 @@ export function agregerCO2Biogenique(lignes) {
 // Le FE est re-résolu par id : les snapshots persistés (fe_utilise) peuvent
 // être antérieurs à l'ajout de lbFactorId/mbFallbackId ou porter une valeur
 // corrigée depuis.
-export function agregerScope2Dual(lignes) {
+export function agregerScope2Dual(lignes, facteursCustom = []) {
   const round3 = (v) => Math.round(v * 1000) / 1000
   const details = []
   let lbSum = 0
@@ -252,7 +252,7 @@ export function agregerScope2Dual(lignes) {
   lignes.forEach(ligne => {
     if (ligne.scope !== 2 || !ligne.resultat) return
     const snapshot = ligne.resultat.fe_utilise
-    const fe = (snapshot?.id && getFactorByIdWithCustom(snapshot.id)) || snapshot || {}
+    const fe = (snapshot?.id && getFactorByIdWithCustom(snapshot.id, facteursCustom)) || snapshot || {}
     const qty = ligne.resultat.donnee_brute
     const ownT = (typeof fe.valeur === 'number' && typeof qty === 'number')
       ? round3((qty * fe.valeur) / 1000)
@@ -264,11 +264,11 @@ export function agregerScope2Dual(lignes) {
     if ((fe.scope2method || 'location') === 'market') {
       mb_t = ownT
       mbSource = 'contrat'
-      const feLB = fe.lbFactorId ? getFactorByIdWithCustom(fe.lbFactorId) : null
+      const feLB = fe.lbFactorId ? getFactorByIdWithCustom(fe.lbFactorId, facteursCustom) : null
       lb_t = feLB ? round3((qty * feLB.valeur) / 1000) : ownT
     } else {
       lb_t = ownT
-      const feMB = fe.mbFallbackId ? getFactorByIdWithCustom(fe.mbFallbackId) : null
+      const feMB = fe.mbFallbackId ? getFactorByIdWithCustom(fe.mbFallbackId, facteursCustom) : null
       if (feMB) {
         mb_t = round3((qty * feMB.valeur) / 1000)
         mbSource = 'residuel'

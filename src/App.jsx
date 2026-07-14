@@ -605,7 +605,7 @@ function AppContent({ workdir, onChangeWorkdir, onShowLegal }) {
               />
             )}
             {currentView === 'resultats' && (
-              <Resultats projet={projet} lignes={lignes} workdir={workdir} projetPath={projetPath} />
+              <Resultats projet={projet} lignes={lignes} workdir={workdir} projetPath={projetPath} facteursCustom={facteursCustom} />
             )}
             {currentView === 'plan-action' && (
               <PlanAction projet={projet} lignes={lignes} />

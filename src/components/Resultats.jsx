@@ -75,7 +75,7 @@ const resultTabs = [
   { id: 'evolution', label: 'Évolution' },
 ]
 
-export default function Resultats({ projet, lignes, workdir, projetPath }) {
+export default function Resultats({ projet, lignes, workdir, projetPath, facteursCustom = [] }) {
   const [resultMode, setResultMode] = useState('bilan')
   const sites = projet.sites || []
   const [selectedSite, setSelectedSite] = useState(null)
@@ -91,7 +91,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
   const { alertes } = useMemo(() => controlerCoherence(projet, filteredLignes), [projet, filteredLignes])
   const qualite = useMemo(() => calculerQualiteDonnees(filteredLignes), [filteredLignes])
   const co2b = useMemo(() => agregerCO2Biogenique(filteredLignes), [filteredLignes])
-  const scope2dual = useMemo(() => agregerScope2Dual(filteredLignes), [filteredLignes])
+  const scope2dual = useMemo(() => agregerScope2Dual(filteredLignes, facteursCustom), [filteredLignes, facteursCustom])
 
   const [scope3Expanded, setScope3Expanded] = useState(false)
   const [viewMode, setViewMode] = useState('ghg')
@@ -316,7 +316,7 @@ export default function Resultats({ projet, lignes, workdir, projetPath }) {
   }
 
   async function handleExport(generator, extensions) {
-    const { bytes, fileName } = generator(projet, filteredLignes, resultats, categories, topPostes, qualite)
+    const { bytes, fileName } = generator(projet, filteredLignes, resultats, categories, topPostes, qualite, facteursCustom)
     if (!isTauri()) {
       const blob = new Blob([bytes])
       const url = URL.createObjectURL(blob)
