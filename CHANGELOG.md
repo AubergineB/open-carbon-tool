@@ -4,6 +4,31 @@ Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-07-15
+
+### Rapport PDF
+
+- Rendu entièrement repris selon la charte graphique : page de garde sombre,
+  synthèse avec cartes par scope, barre de répartition et top 5 des postes,
+  nouvelle page de répartition par catégorie, double restitution Scope 2 et
+  CO₂ biogénique dans les résultats détaillés.
+- Le tableau détaillé affiche le total par ligne (combustion + amont), cohérent
+  avec le total agrégé ; les colonnes s'additionnent désormais.
+- Caractères réparés : l'indice de tCO₂e et les espaces insécables des nombres
+  français sortaient en glyphes cassés avec les polices PDF standard.
+
+### Corrections
+
+- Les facteurs d'émission personnalisés sont propagés à la double restitution
+  Scope 2 (Location-Based / Market-Based).
+- Confirmations et fermeture de fenêtre fiabilisées via les dialogues natifs.
+- Mentions légales alignées sur la licence MIT.
+
+### Distribution
+
+- macOS : le `.dmg` lui-même est notarisé et agrafé, plus seulement l'app.
+- Dépendances vulnérables mises à jour (xlsx, dompurify).
+
 ## [0.3.0] — 2026-07-13
 
 ### Méthodologie
